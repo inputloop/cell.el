@@ -31,3 +31,9 @@ included object system, EIEIO.
  - Cursor can display incorrectly in cells with Unicode characters
    or images.
  - Needs more optimization.
+ - No data dependency resolution or formulae, but these will be
+   implemented.
+
+* Applications
+
+ - Check out [[https://gitlab.com/dto/mosaic-el][Mosaic]] for examples of using Cell-mode in an application.
