@@ -891,18 +891,18 @@ The argument FACE specifies the face to use for the overlay."
   (cell-with-current-cell-sheet
    (let* ((inhibit-read-only t)  
           (face (or face 'cell-cursor-face))
-          (cursor-width (if (and cell^ (cell-label-width cell^))
-                            (ceiling (cell-label-width cell^))
+          (cursor-width ;; (if (and cell^ (cell-label-width cell^))
+                        ;;     (ceiling (cell-label-width cell^))
                           (- (aref stops (+ column 1)) 
-                             (aref stops column)))))
+                             (aref stops column))))
      (let ((p (gethash (list row column) cell-cached-buffer-positions))
            (width (gethash (list row column) cell-cached-buffer-widths)))
        (let ((cl (cell-grid-get grid row column))
              (p0 0))
-         (when cl
-           (when (cell-label-width cl)
-             (setf cursor-width (ceiling (max cell-blank-width (cell-label-width cl))))))
-         (let ((ov (make-overlay (+ p0 (- p width)) p)))
+         ;; (when cl
+         ;;   (when (cell-label-width cl)
+         ;;     (setf cursor-width (ceiling (max cell-blank-width (cell-label-width cl))))))
+         (let ((ov (make-overlay (+ p0 (- p cursor-width)) p)))
            (overlay-put ov 'face face)
            (goto-char p)))))))
 
@@ -1437,9 +1437,10 @@ use."
       (setf (gethash (list row col)
                      cell-cached-buffer-positions)
             (point))
+      ;; the variables ROW and COL are free in the next line.
       (setf (gethash (list row col)
                      cell-cached-buffer-widths)
-            (length str))
+            (aref (cell-sheet-widths cell-current-sheet) col))
       (add-text-properties (point) (- (point) (length str))
                            `(face ,face))
       (length label))))
