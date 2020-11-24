@@ -6,6 +6,7 @@
 ;; Maintainer: David O'Toole <dto@xelf.me> <deeteeoh1138@gmail.com>
 ;; Package-Requires: ((emacs "24.4"))
 ;; License: GPLv3
+;; Version: 1.0
 
 ;; This program is free software; you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License
@@ -144,6 +145,7 @@
 ;;; Code:
 
 (require 'cl-lib)
+(eval-when-compile (require 'cl))
 (require 'eieio)
 (require 'eieio-base)
 (require 'eieio-custom)
@@ -168,7 +170,7 @@ memoization process: :KEY, :VALIDATOR, and :TEST.  The BODY
 forms go inside the lambda."
   `(memoize (cl-defun ,name ,args . ,body) ,@memo-args))
 
-(cl-defun memo (fn &key (key #'first) (test #'eql) validator name)
+(cl-defun memo (fn &key (key #'cl-first) (test #'eql) validator name)
   "Return a memo-function of the function FN.
 KEY is the function used to obtain the hash key from the argument
 list.  TEST is the equality predicate.  VALIDATOR if non-nil must
@@ -193,7 +195,7 @@ the function being memoized."
 			      (funcall validator* candidate-value))
 		      (setf (gethash k table*) candidate-value)))))))))))
 
-(cl-defun memoize (fn-name &key (key #'first) (test #'eql) validator)
+(cl-defun memoize (fn-name &key (key #'cl-first) (test #'eql) validator)
   "Replace FN-NAME's global definition with a memoized version.
 KEY is the function used to obtain the hash key from the argument
 list.  TEST is the equality predicate.  VALIDATOR if non-nil must
@@ -285,7 +287,7 @@ The list SPECS is the legacy slot definition."
 
 (defun cell-string-width (str)
   "Return the width of the string STR."
-  (/ (float (apply #'+ (map 'list #'cell-char-width-pixels str)))
+  (/ (float (apply #'+ (cl-map 'list #'cell-char-width-pixels str)))
      (float (window-font-width))))
 
 ;;; Variables
@@ -299,6 +301,9 @@ The list SPECS is the legacy slot definition."
 
 (defvar cell-cached-buffer-positions nil)
 (make-variable-buffer-local 'cell-cached-buffer-positions)
+
+(defvar cell-cached-buffer-widths nil)
+(make-variable-buffer-local 'cell-cached-buffer-widths)
 
 (cell-defclass cell ()
                label       ; label to be displayed on the cell
@@ -625,7 +630,7 @@ By default this executes the cell."
   (mapcar (lambda (mapping)
             (define-key (cell-find-cell-mode-map) (car mapping) (cdr mapping)))
           `(([(control c)(control e)] . cell-sheet-execute)
-            ([(return)] . cell-sheet-create-cell)
+            ([(cl-return)] . cell-sheet-create-cell)
             ([(next)] . cell-sheet-page-down)
             ([(prior)] . cell-sheet-page-up)
             ([(control ? )] . cell-sheet-set-mark)
@@ -693,6 +698,7 @@ By default this executes the cell."
                          (point-min) (point-max))))))))
     ;; finish initializing cell mode in new buffer
     (setf cell-cached-buffer-positions (make-hash-table :test 'equal))
+    (setf cell-cached-buffer-widths (make-hash-table :test 'equal))
     (delete-region (point-min) (point-max))
     (add-hook 'before-save-hook 'cell-remove-rendering)
     (add-hook 'after-save-hook 'cell-sheet-update*)
@@ -798,9 +804,9 @@ By default this executes the cell."
                  ((> c (+ dc start-col)))
                (push (cell-copy-cell (cell-grid-get grid r c))
                      out-column))
-             (push (reverse out-column) out-rows)
+             (push (nreverse out-column) out-rows)
              (setf out-column nil))
-           (setf cell-clipboard (reverse out-rows))))
+           (setf cell-clipboard (nreverse out-rows))))
        (cell-sheet-clear-mark*)
        (cell-sheet-update)
        (message "The selection was copied to the clipboard.")))))
@@ -812,7 +818,8 @@ By default this executes the cell."
    (when (or sel selection)
      (let* ((inhibit-read-only t))
        (cell-push-undo-history)
-       (cl-destructuring-bind (r1 c1 r2 c2) (or sel (slot-value cell-current-sheet 'selection))
+       (cl-destructuring-bind (r1 c1 r2 c2)
+           (or sel (slot-value cell-current-sheet 'selection))
          (let* ((dr (abs (- r2 r1)))
                 (dc (abs (- c2 c1)))
                 (start-row (min r1 r2))
@@ -888,13 +895,14 @@ The argument FACE specifies the face to use for the overlay."
                             (ceiling (cell-label-width cell^))
                           (- (aref stops (+ column 1)) 
                              (aref stops column)))))
-     (let ((p (gethash (list row column) cell-cached-buffer-positions)))
+     (let ((p (gethash (list row column) cell-cached-buffer-positions))
+           (width (gethash (list row column) cell-cached-buffer-widths)))
        (let ((cl (cell-grid-get grid row column))
              (p0 0))
          (when cl
            (when (cell-label-width cl)
              (setf cursor-width (ceiling (max cell-blank-width (cell-label-width cl))))))
-         (let ((ov (make-overlay (+ p0 (- p cursor-width)) p)))
+         (let ((ov (make-overlay (+ p0 (- p width)) p)))
            (overlay-put ov 'face face)
            (goto-char p)))))))
 
@@ -1038,10 +1046,10 @@ The argument FACE specifies which face to use."
           (cols (cell-grid-columns grid))
           (new-cursor
            (cl-case direction
-             (:up (if (not (minusp (- cursor-row distance)))
+             (:up (if (not (cl-minusp (- cursor-row distance)))
                       (list (- cursor-row distance) cursor-column)
                     cursor))
-             (:left (if (not (minusp (- cursor-column distance)))
+             (:left (if (not (cl-minusp (- cursor-column distance)))
                         (list cursor-row (- cursor-column distance))
                       cursor))
              (:down (if (< cursor-row (- rows distance))
@@ -1429,6 +1437,9 @@ use."
       (setf (gethash (list row col)
                      cell-cached-buffer-positions)
             (point))
+      (setf (gethash (list row col)
+                     cell-cached-buffer-widths)
+            (length str))
       (add-text-properties (point) (- (point) (length str))
                            `(face ,face))
       (length label))))
@@ -1444,6 +1455,9 @@ use."
     (setf (gethash (list row col)
                    cell-cached-buffer-positions)
           (point))
+    (setf (gethash (list row col)
+                   cell-cached-buffer-widths)
+          width)
     width))
 
 (defun cell-insert-spacer (width &optional face)
@@ -1658,7 +1672,7 @@ EVENT is the mouse event data."
 
 ;;; Additional commands
 
-(defun* cell-sheet-create (&optional r0 c0 (class 'cell-sheet))
+(cl-defun cell-sheet-create (&optional r0 c0 (class 'cell-sheet))
   "Create a new cell sheet with R0 rows and C0 columns."
   (interactive)
   (let ((r (or r0 (read-from-minibuffer "Create cell-sheet with how many rows? " "24")))
@@ -1705,10 +1719,10 @@ EVENT is the mouse event data."
 
 (cl-defmethod cell-sheet-setting-value ((sheet cell-sheet) setting-name)
   (let ((settings (cell-sheet-collect-settings sheet)))
-    (block finding
+    (cl-block finding
       (dolist (setting settings)
         (when (eq setting-name (aref setting 0))
-          (return-from finding (aref setting 1)))))))
+          (cl-return-from finding (aref setting 1)))))))
 
 (defun cell-apply-settings (settings)
   (dolist (binding settings)
@@ -1757,9 +1771,9 @@ EVENT is the mouse event data."
 (defun cell-sexp->cell (sexp)
   (let (cell)
     (when (and (consp sexp)
-               (symbolp (first sexp))
-               (ignore-errors (eieio--class-p (eieio--class-object (first sexp)))))
-      (setf cell (apply #'make-instance (first sexp) (rest sexp))))
+               (symbolp (cl-first sexp))
+               (ignore-errors (eieio--class-p (eieio--class-object (cl-first sexp)))))
+      (setf cell (apply #'make-instance (cl-first sexp) (cl-rest sexp))))
     (when (null cell)
       (setf cell (make-instance 'cell-expression
                                 :value sexp
