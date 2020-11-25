@@ -299,8 +299,14 @@ The list SPECS is the legacy slot definition."
 
 (defvar cell-clipboard nil "List of cell rows on the clipboard.")
 
+(defvar cell-last-rendered-position nil)
+(make-variable-buffer-local 'cell-last-rendered-position)
+
 (defvar cell-cached-buffer-positions nil)
 (make-variable-buffer-local 'cell-cached-buffer-positions)
+
+(defvar cell-cached-buffer-positions* nil)
+(make-variable-buffer-local 'cell-cached-buffer-positions*)
 
 (cell-defclass cell ()
                label       ; label to be displayed on the cell
@@ -695,6 +701,7 @@ By default this executes the cell."
                          (point-min) (point-max))))))))
     ;; finish initializing cell mode in new buffer
     (setf cell-cached-buffer-positions (make-hash-table :test 'equal))
+    (setf cell-cached-buffer-positions* (make-hash-table :test 'equal))
     (delete-region (point-min) (point-max))
     (add-hook 'before-save-hook 'cell-remove-rendering)
     (add-hook 'after-save-hook 'cell-sheet-update*)
@@ -893,13 +900,15 @@ The argument FACE specifies the face to use for the overlay."
                                (length (cell-label cell^))
                                (- (aref stops (+ column 1)) 
                                   (aref stops column))))))
-     (let ((p (gethash (list row column) cell-cached-buffer-positions)))
+     (let ((p (gethash (list row column) cell-cached-buffer-positions))
+           (p* (gethash (list row column) cell-cached-buffer-positions*)))
        (let ((cl (cell-grid-get grid row column))
              (p0 0))
-         (when cl
-           (when (cell-label-width cl)
-             (setf cursor-width (ceiling (max cell-blank-width (cell-label-width cl))))))
-         (let ((ov (make-overlay (+ p0 (- p cursor-width)) p)))
+         ;; (when cl
+         ;;   (when (cell-label-width cl)
+         ;;     (setf cursor-width (ceiling (max cell-blank-width (cell-label-width cl))))))
+         ;; (let ((ov (make-overlay (+ p0 (- p cursor-width)) p)))
+         (let ((ov (make-overlay (- p cursor-width) p)))
            (overlay-put ov 'face face)
            (goto-char p)))))))
 
@@ -980,21 +989,8 @@ The argument FACE specifies which face to use."
    (if (fboundp 'remove-overlays)
        (remove-overlays)
      (mapc #'delete-overlay (overlays-in (point-min) (point-max))))
-   ;; The commented out code below is sometimes used during testing.
-   ;;
-   ;; (when selection
-   ;;   (cell-sheet-display-selection))
    (unless just-delete
-     (let ((c (cell-grid-get grid cursor-row cursor-column)))
-       (if c
-           ;;(if (null (cell-label-width c))
-               (cell-sheet-display-cursor cursor-row cursor-column)
-             ;;(cell-sheet-highlight-cell cursor-row cursor-column 'cell-cursor-face)
-           )
-         (cell-sheet-display-cursor cursor-row cursor-column)))))
-  ;;(cell-sheet-highlight-cell cursor-row cursor-column 'cell-cursor-face)
-;; (let ((m (cell-sheet-mark sheet)))
-;;   (when m (cell-sheet-display-cursor (first m) (second m) 'cell-mark-face)))))
+     (cell-sheet-display-cursor cursor-row cursor-column))))
 
 (defun cell-sheet-move-bol ()
   "Move to the beginning of the line."
@@ -1323,13 +1319,11 @@ The argument FACE specifies which face to use."
          (cell-width 0)
          (row-header-width (cell-sheet-row-header-width cell-current-sheet))
          (face nil))
+    (setf cell-last-rendered-position nil)
     (if raw-display-p 
         ;; just insert all the labels with \n between lines
         (progn 
           (setf cursor-type 'hollow)
-          ;; (when *serialization-marker*
-          ;;   (delete-region (point-min) (- (marker-position *serialization-marker*)
-          ;;                              1)))
           (goto-char (point-min))
           (dotimes (row rows)
             (dotimes (col columns)
@@ -1345,9 +1339,6 @@ The argument FACE specifies which face to use."
       ;; otherwise render everything all nice with borders and cell backgrounds. 
       ;;
       ;; Render the cell sheet into the buffer
-      ;; (if cell-rendering-marker
-      ;;     (delete-region (marker-position cell-rendering-marker) (point-max))
-      ;;   (error "Cell-mode: No rendering marker."))
       (goto-char (point-max))
       (setf rendering-point (point))
       ;; draw headers if needed
@@ -1429,11 +1420,15 @@ use."
                     (interactive)
                     nil)))
     (let ((str label)) 
+      (when cell-last-rendered-position
+        (setf (gethash cell-last-rendered-position cell-cached-buffer-positions*)
+              (point)))
       (insert str)
       ;; the variables ROW and COL are free in the next line.
       (setf (gethash (list row col)
                      cell-cached-buffer-positions)
             (point))
+      (setf cell-last-rendered-position (list row col))
       (add-text-properties (point) (- (point) (length str))
                            `(face ,face))
       (length label))))
@@ -1449,6 +1444,10 @@ use."
     (setf (gethash (list row col)
                    cell-cached-buffer-positions)
           (point))
+    (when cell-last-rendered-position
+      (setf (gethash cell-last-rendered-position cell-cached-buffer-positions*)
+            (point)))
+    (setf cell-last-rendered-position (list row col))
     width))
 
 (defun cell-insert-spacer (width &optional face)
