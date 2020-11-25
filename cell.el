@@ -894,16 +894,15 @@ The argument FACE specifies the face to use for the overlay."
   (cell-with-current-cell-sheet
    (let* ((inhibit-read-only t)  
           (face (or face 'cell-cursor-face))
-          (cursor-width  ;; (if (and cell^ (cell-label-width cell^))
-                         ;;     (ceiling (cell-label-width cell^))
-                         ;;   (if cell^
-                         ;;       (length (cell-label cell^))
-                               (- (aref stops (+ column 1)) 
-                                  (aref stops column))))
+          (cursor-width (- (aref stops (+ column 1)) 
+                           (aref stops column))))
      (let ((p (gethash (list row column) cell-cached-buffer-positions))
            (p* (gethash (list row column) cell-cached-buffer-positions*)))
-       (let ((cl (cell-grid-get grid row column))
-             (p0 0))
+       (let* ((cl (cell-grid-get grid row column))
+              (p0 0)
+              (q (if (and cl (cell-label-width cl))
+                     -1
+                   0)))
          ;; (when cl
          ;;   (when (cell-label-width cl)
          ;;     (setf cursor-width (ceiling (max cell-blank-width (cell-label-width cl))))))
@@ -1420,15 +1419,11 @@ use."
                     (interactive)
                     nil)))
     (let ((str label)) 
-      (when cell-last-rendered-position
-        (setf (gethash cell-last-rendered-position cell-cached-buffer-positions*)
-              (point)))
       (insert str)
       ;; the variables ROW and COL are free in the next line.
       (setf (gethash (list row col)
                      cell-cached-buffer-positions)
             (point))
-      (setf cell-last-rendered-position (list row col))
       (add-text-properties (point) (- (point) (length str))
                            `(face ,face))
       (length label))))
@@ -1444,10 +1439,6 @@ use."
     (setf (gethash (list row col)
                    cell-cached-buffer-positions)
           (point))
-    (when cell-last-rendered-position
-      (setf (gethash cell-last-rendered-position cell-cached-buffer-positions*)
-            (point)))
-    (setf cell-last-rendered-position (list row col))
     width))
 
 (defun cell-insert-spacer (width &optional face)
