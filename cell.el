@@ -1449,6 +1449,9 @@ use."
                      `(space . (:width ,width)))
   (when face
     (put-text-property (point) (1+ (point)) 'face face))
+  ;; adjust cached buffer position for cursor, when spacer is inserted
+  (incf (gethash (list row col)
+                 cell-cached-buffer-positions))
   ;;
   (forward-char))
 
