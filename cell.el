@@ -894,12 +894,12 @@ The argument FACE specifies the face to use for the overlay."
   (cell-with-current-cell-sheet
    (let* ((inhibit-read-only t)  
           (face (or face 'cell-cursor-face))
-          (cursor-width  (if (and cell^ (cell-label-width cell^))
-                             (ceiling (cell-label-width cell^))
-                           (if cell^
-                               (length (cell-label cell^))
+          (cursor-width  ;; (if (and cell^ (cell-label-width cell^))
+                         ;;     (ceiling (cell-label-width cell^))
+                         ;;   (if cell^
+                         ;;       (length (cell-label cell^))
                                (- (aref stops (+ column 1)) 
-                                  (aref stops column))))))
+                                  (aref stops column))))
      (let ((p (gethash (list row column) cell-cached-buffer-positions))
            (p* (gethash (list row column) cell-cached-buffer-positions*)))
        (let ((cl (cell-grid-get grid row column))
