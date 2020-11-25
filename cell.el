@@ -302,9 +302,6 @@ The list SPECS is the legacy slot definition."
 (defvar cell-cached-buffer-positions nil)
 (make-variable-buffer-local 'cell-cached-buffer-positions)
 
-(defvar cell-cached-buffer-widths nil)
-(make-variable-buffer-local 'cell-cached-buffer-widths)
-
 (cell-defclass cell ()
                label       ; label to be displayed on the cell
                label-width ; width of label (when not integral; used for images)
@@ -630,7 +627,7 @@ By default this executes the cell."
   (mapcar (lambda (mapping)
             (define-key (cell-find-cell-mode-map) (car mapping) (cdr mapping)))
           `(([(control c)(control e)] . cell-sheet-execute)
-            ([(cl-return)] . cell-sheet-create-cell)
+            ([(return)] . cell-sheet-create-cell)
             ([(next)] . cell-sheet-page-down)
             ([(prior)] . cell-sheet-page-up)
             ([(control ? )] . cell-sheet-set-mark)
@@ -698,7 +695,6 @@ By default this executes the cell."
                          (point-min) (point-max))))))))
     ;; finish initializing cell mode in new buffer
     (setf cell-cached-buffer-positions (make-hash-table :test 'equal))
-    (setf cell-cached-buffer-widths (make-hash-table :test 'equal))
     (delete-region (point-min) (point-max))
     (add-hook 'before-save-hook 'cell-remove-rendering)
     (add-hook 'after-save-hook 'cell-sheet-update*)
@@ -891,17 +887,18 @@ The argument FACE specifies the face to use for the overlay."
   (cell-with-current-cell-sheet
    (let* ((inhibit-read-only t)  
           (face (or face 'cell-cursor-face))
-          (cursor-width ;; (if (and cell^ (cell-label-width cell^))
-                        ;;     (ceiling (cell-label-width cell^))
-                          (- (aref stops (+ column 1)) 
-                             (aref stops column))))
-     (let ((p (gethash (list row column) cell-cached-buffer-positions))
-           (width (gethash (list row column) cell-cached-buffer-widths)))
+          (cursor-width  (if (and cell^ (cell-label-width cell^))
+                             (ceiling (cell-label-width cell^))
+                           (if cell^
+                               (length (cell-label cell^))
+                               (- (aref stops (+ column 1)) 
+                                  (aref stops column))))))
+     (let ((p (gethash (list row column) cell-cached-buffer-positions)))
        (let ((cl (cell-grid-get grid row column))
              (p0 0))
-         ;; (when cl
-         ;;   (when (cell-label-width cl)
-         ;;     (setf cursor-width (ceiling (max cell-blank-width (cell-label-width cl))))))
+         (when cl
+           (when (cell-label-width cl)
+             (setf cursor-width (ceiling (max cell-blank-width (cell-label-width cl))))))
          (let ((ov (make-overlay (+ p0 (- p cursor-width)) p)))
            (overlay-put ov 'face face)
            (goto-char p)))))))
@@ -1437,10 +1434,6 @@ use."
       (setf (gethash (list row col)
                      cell-cached-buffer-positions)
             (point))
-      ;; the variables ROW and COL are free in the next line.
-      (setf (gethash (list row col)
-                     cell-cached-buffer-widths)
-            (aref (cell-sheet-widths cell-current-sheet) col))
       (add-text-properties (point) (- (point) (length str))
                            `(face ,face))
       (length label))))
@@ -1456,9 +1449,6 @@ use."
     (setf (gethash (list row col)
                    cell-cached-buffer-positions)
           (point))
-    (setf (gethash (list row col)
-                   cell-cached-buffer-widths)
-          width)
     width))
 
 (defun cell-insert-spacer (width &optional face)
