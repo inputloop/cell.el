@@ -6,7 +6,7 @@
 ;; Maintainer: David O'Toole <dto@xelf.me> <deeteeoh1138@gmail.com>
 ;; Package-Requires: ((emacs "24.4"))
 ;; License: GPLv3
-;; Version: 1.0
+;; Version: 1.1
 
 ;; This program is free software; you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License
@@ -150,69 +150,6 @@
 (require 'eieio-base)
 (require 'eieio-custom)
 (require 'eieio-speedbar)
-
-;;; Memoization facility.
-
-;; The `defun-memo' facility is based on code by Peter Norvig
-;; for his book "Paradigms of Artificial Intelligence
-;; Programming". The modified versions are redistributed here under
-;; the terms of the General Public License as given above.
-
-;; You can find more information on Norvig's book at his website:
-;; http://www.norvig.com/paip.html
-;; http://www.norvig.com/license.html
-
-(cl-defmacro defun-memo (name args memo-args &body body)
-  "Define a memoized function named NAME.
-ARGS is the lambda list giving the memoized function's arguments.
-MEMO-ARGS is a list with optional keyword arguments for the
-memoization process: :KEY, :VALIDATOR, and :TEST.  The BODY
-forms go inside the lambda."
-  `(memoize (cl-defun ,name ,args . ,body) ,@memo-args))
-
-(cl-defun memo (fn &key (key #'cl-first) (test #'eql) validator name)
-  "Return a memo-function of the function FN.
-KEY is the function used to obtain the hash key from the argument
-list.  TEST is the equality predicate.  VALIDATOR if non-nil must
-return non-nil for the value to be cached.  NAME is the name of
-the function being memoized."
-  (let ((table (make-hash-table :test test)))
-    (setf (get name 'memo) table)
-    (lexical-let ((key* key)
-                  (table* table)
-                  (validator* validator)
-                  (fn* fn))
-      #'(lambda (&rest args)
-          (let ((k (funcall key* args)))
-            (let* ((val (gethash k table* :default-|-value))
-                   (found-p (not (eq val :default-|-value))))
-              (if found-p
-                  val
-		;; only cache if value is valid
-		(let ((candidate-value (apply fn* args)))
-		  (prog1 candidate-value
-		    (when (or (null validator*)
-			      (funcall validator* candidate-value))
-		      (setf (gethash k table*) candidate-value)))))))))))
-
-(cl-defun memoize (fn-name &key (key #'cl-first) (test #'eql) validator)
-  "Replace FN-NAME's global definition with a memoized version.
-KEY is the function used to obtain the hash key from the argument
-list.  TEST is the equality predicate.  VALIDATOR if non-nil must
-return non-nil for the value to be cached."
-  (clear-memoize fn-name)
-  (setf (symbol-function fn-name)
-        (memo (symbol-function fn-name)
-              :name fn-name :key key :test test :validator validator)))
-
-(cl-defun clear-memoize (fn-name)
-  "Clear the hash table from the memo function FN-NAME."
-  (let ((table (get fn-name 'memo)))
-    (when table (clrhash table))))
-
-(cl-defun get-memo-table (fn-name)
-  "Get the hash table from the memo function FN-NAME."
-  (get fn-name 'memo))
 
 ;;; EIEIO compatibility macros
 
@@ -1420,13 +1357,10 @@ use."
                            `(face ,face))
       (length label))))
 
-(defun-memo cell-cached-blank-string (width face) (:test 'equal :key 'identity)
-  (propertize (make-string width ? ) 'face face))
-
 (defun cell-insert-blank (width &optional face) 
   "Insert a blank cell WIDTH characters wide in face FACE."
   (when (> width 0)
-    (insert (cell-cached-blank-string width face))
+    (insert (propertize (make-string width ? ) 'face face))
     ;; the variables ROW and COL are free in the next line.
     (setf (gethash (list row col)
                    cell-cached-buffer-positions)
