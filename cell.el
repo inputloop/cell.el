@@ -299,9 +299,6 @@ The list SPECS is the legacy slot definition."
 
 (defvar cell-clipboard nil "List of cell rows on the clipboard.")
 
-(defvar cell-last-rendered-position nil)
-(make-variable-buffer-local 'cell-last-rendered-position)
-
 (defvar cell-cached-buffer-positions nil)
 (make-variable-buffer-local 'cell-cached-buffer-positions)
 
@@ -903,10 +900,6 @@ The argument FACE specifies the face to use for the overlay."
               (q (if (and cl (cell-label-width cl))
                      -1
                    0)))
-         ;; (when cl
-         ;;   (when (cell-label-width cl)
-         ;;     (setf cursor-width (ceiling (max cell-blank-width (cell-label-width cl))))))
-         ;; (let ((ov (make-overlay (+ p0 (- p cursor-width)) p)))
          (let ((ov (make-overlay (- p cursor-width) p)))
            (overlay-put ov 'face face)
            (goto-char p)))))))
@@ -1318,7 +1311,6 @@ The argument FACE specifies which face to use."
          (cell-width 0)
          (row-header-width (cell-sheet-row-header-width cell-current-sheet))
          (face nil))
-    (setf cell-last-rendered-position nil)
     (if raw-display-p 
         ;; just insert all the labels with \n between lines
         (progn 
@@ -1377,7 +1369,7 @@ The argument FACE specifies which face to use."
               (progn
                 (setf cell-width
                       (cell-insert cell^ face))
-                ;; fill column if needed
+                ;; fill column to integer width, if needed
                 (if (cell-label-width cell^)
                     (progn 
                       (cell-insert-spacer (+ 1.0 (- (ceiling (cell-label-width cell^))
@@ -1507,8 +1499,6 @@ The optional argument FACE is the face to use."
      (save-excursion
        (delete-region (point-min) (point-max))
        (goto-char (point-min))
-       ;; (setf cell-rendering-marker (point-marker))
-       ;; (set-marker-insertion-type cell-rendering-marker t)
        (insert " ")
        (goto-char (point-max))
        (goto-char (point-min))
@@ -1696,10 +1686,6 @@ EVENT is the mouse event data."
       (let ((vec (cell-find-value c)))
         (when (eq setting-name (aref vec 0))
           (cell-accept-string-value c (prin1-to-string (vector setting-name value))))))))
-
-;; (cl-defmethod cell-sheet-change-setting :after ((sheet cell-sheet) setting-name value) 
-;;   (cell-sheet-update sheet)
-;;   (setf (buffer-modified-p (cell-sheet-buffer sheet)) t))
 
 (cl-defmethod cell-sheet-setting-value ((sheet cell-sheet) setting-name)
   (let ((settings (cell-sheet-collect-settings sheet)))
