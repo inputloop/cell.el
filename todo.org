@@ -1,0 +1,14 @@
+* TODO Add note re: customizations of default face
+* TODO write elisp pure sexp importer/exporter of tables
+** TODO write CSV importer for cell-mode
+* TODO add EIEIO class key to cell-mode file format
+** TODO or, use EIEIO-persistent
+* TODO break icon-ribbon.el into its own project
+* TODO open org-mode table in cell and back
+* TODO check out helpful.el
+* TODO send org babel results into cellmode
+* TODO profile and optimize further
+* TODO allow cell-sheet to be a window into a larger dataset or table
+* TODO fix scrolling to really use window size
+* TODO corwin: "consider using org-mode as backend"
+** TODO allow lazy propertization / simplified display
