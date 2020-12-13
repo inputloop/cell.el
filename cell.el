@@ -614,7 +614,9 @@ By default this executes the cell."
             ;; cut and paste
             ([(meta w)] . cell-sheet-copy-to-clipboard)
             ([(control w)] . cell-sheet-cut-to-clipboard)
-            ([(control y)] . cell-sheet-paste))))
+            ([(control y)] . cell-sheet-paste)))
+    (add-hook 'cell-mode-hook 'cell-replace-sheet-maybe)
+    (cell-start-timer))
 
 (cell-mode-insinuate)
 
@@ -1668,11 +1670,6 @@ EVENT is the mouse event data."
      (cell-sheet-after-open-hook cell-current-sheet)
      (cell-sheet-update)
      (setf (buffer-modified-p (current-buffer)) nil))))
-
-(defun cell-insinuate ()
-  (interactive)
-  (add-hook 'cell-mode-hook 'cell-replace-sheet-maybe)
-  (cell-start-timer))
 
 (defun cell-sexp->cell (sexp)
   (let (cell)
