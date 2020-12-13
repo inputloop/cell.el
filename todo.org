@@ -12,3 +12,6 @@
 * TODO fix scrolling to really use window size
 * TODO corwin: "consider using org-mode as backend"
 ** TODO allow lazy propertization / simplified display
+** TODO [#B] fix rebooting cell mode should not move cursor
+** TODO [#A] fix error when mouse drag begins/ends outside of cell rendering
+** TODO [#B] fix background odd-column-color faces problems in cell-mode
