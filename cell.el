@@ -38,7 +38,7 @@
 ;; - Uses a simple file format based on Lisp property lists.  Cell-mode
 ;;   files can be visited, saved, loaded, and so on just like any other
 ;;   text file.  Works with Emacs' existing autosave, version control,
-;;   and backup features.
+;;   backup, and TRAMP features.
 ;; - You can cut, copy, and paste cells between sheets using typical
 ;;   Emacs shortcuts, as well as insert and delete rows and
 ;;   columns. (CUA-mode not yet supported.)
@@ -643,6 +643,7 @@ By default this executes the cell."
     (cell-mode-insinuate)
     (cell-sheet-update)
     (cell-sheet-after-open-hook cell-current-sheet)
+    (setq-local show-trailing-whitespace nil)
     (setf (buffer-modified-p (current-buffer)) nil)))
 
 ;;; Initializing sheets
