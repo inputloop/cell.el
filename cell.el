@@ -656,7 +656,7 @@ By default this executes the cell."
   (let* ((new-buffer (current-buffer))
          (inhibit-read-only t)
          (rows (or (slot-value sheet^ 'rows) 24))
-         (cols (or (slot-value sheet^ 'cols) 12)))
+         (cols (or (slot-value sheet^ 'cols) 16)))
     (with-slots (buffer grid cursor column-stops
                         borders-p headers-p)
         cell-current-sheet
