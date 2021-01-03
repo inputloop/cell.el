@@ -6,7 +6,7 @@
 ;; Maintainer: David O'Toole <dto@xelf.me> <deeteeoh1138@gmail.com>
 ;; Package-Requires: ((emacs "24.4"))
 ;; License: GPLv3
-;; Version: 1.1
+;; Version: 1.2
 
 ;; This program is free software; you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License
@@ -53,8 +53,6 @@
 
 ;; Issues:
 
-;; - Columns are sometimes misaligned; restart Cell-mode with "M-x
-;;   cell-mode RET" to restore proper formatting.
 ;; - Cursor can display incorrectly in cells with Unicode characters
 ;;   or images.
 ;; - Needs more optimization.
@@ -64,7 +62,7 @@
 ;; - It is highly recommended to byte-compile this file so that
 ;;   commands execute quickly.
 ;; - Cell-mode source dates originally to 2006 and thus uses dynamic
-;;   binding by default.  Two warnings each about free variables named
+;;   binding by default.  Two warnings about free variables named
 ;;   "row" and "col" are to be expected during byte-compilation.
 
 ;; Getting started:
@@ -243,7 +241,7 @@ The list SPECS is the legacy slot definition."
 (defvar cell-cached-buffer-positions* nil)
 (make-variable-buffer-local 'cell-cached-buffer-positions*)
 
-(cell-defclass cell ()
+(cell-defclass cell (eieio-persistent)
                label       ; label to be displayed on the cell
                label-width ; width of label (when not integral; used for images)
                value       ; can be any lisp object the cell requires.
@@ -441,20 +439,19 @@ By default this executes the cell."
 
 ;;; Sheets
 
-(cell-defclass cell-sheet ()
+(cell-defclass cell-sheet (eieio-persistent)
                name ; string title, currently ignored
                rows ; initial requested number of rows
                cols ; initial requested number of columns
                mark ; nil when there is no mark, or (LIST ROW COL) 
-               rendering ; cached buffer text of spreadsheet
+               (rendering) ; cached buffer text of spreadsheet
                widths ; column widths
                row-header-width ; width of leftmost column 
-               buffer ; what buffer is this sheet in?
-               cursor ; what cell is the user pointing at? (LIST ROW COL)
-               selection ; rectangle in this form: (row-1 col-1 row-2 col-2)
+               (buffer) ; what buffer is this sheet in?
+               (cursor) ; what cell is the user pointing at? (LIST ROW COL)
+               (selection) ; rectangle in this form: (row-1 col-1 row-2 col-2)
                grid ; two-dimensional array of spreadsheet cells
                column-stops ; vector of integers where v[x] is first column number of column x
-               buffer ; associated buffer where user interface is displayed
                borders-p ; whether to display borders
                headers-p ; whether to display headers
                raw-display-p ; whether we are doing raw display
@@ -491,6 +488,10 @@ By default this executes the cell."
           (stops (cell-sheet-column-stops cell-current-sheet)))
      ,@body))
 
+(defun cell-sheet-read (forms)
+  (let ((sheet (eieio-persistent-convert-list-to-object forms)))
+    (prog1 sheet)))
+
 ;;; Undo/redo support
 
 (defvar cell-undo-history nil "Undo history for current cell sheet.")
@@ -501,27 +502,24 @@ By default this executes the cell."
 
 (defun cell-push-undo-history ()
   "Push a serialized copy of the cell sheet onto the undo history."
-  (push (cell-sheet-serialize cell-current-sheet)
+  (push (cell-sheet-serialize-eieio cell-current-sheet)
         cell-undo-history))
 
 (defun cell-push-redo-history ()
   "Push a serialized copy of the cell sheet onto the redo history."
-  (push (cell-sheet-serialize cell-current-sheet)
+  (push (cell-sheet-serialize-eieio cell-current-sheet)
         cell-redo-history))
 
 (defun cell-pop-undo-history ()
   "Undo the last action."
   (let ((inhibit-read-only t)
-        (cursor (cell-sheet-cursor cell-current-sheet))
-        (class (or (cell-sheet-setting-value cell-current-sheet 'cell-sheet-class)
-                   'cell-sheet)))
+        (cursor (cell-sheet-cursor cell-current-sheet)))
     (if (null cell-undo-history)
         (progn (beep) (message "Cell-mode: undo history is empty."))
       (progn 
         (setf cell-current-sheet
-              (cell-sheet-from-plist (cdr (car (read-from-string (pop cell-undo-history))))
-                                     class
-                                     ))
+              (cell-sheet-read
+               (car (read-from-string (pop cell-undo-history)))))
         (cell-sheet-update)
         (setf (cell-sheet-cursor cell-current-sheet) cursor)
         (cell-sheet-after-open-hook cell-current-sheet)
@@ -631,11 +629,15 @@ By default this executes the cell."
         (setf cell-current-sheet
               (make-instance 'cell-sheet :name (buffer-file-name (current-buffer))))
       ;; recover serialized sheet
-      (setf cell-current-sheet
-            (cell-sheet-from-plist
-             (cdr (car (read-from-string
-                        (buffer-substring-no-properties
-                         (point-min) (point-max))))))))
+      (let ((forms (car (read-from-string
+                         (buffer-substring-no-properties
+                          (point-min) (point-max))))))
+        (setf cell-current-sheet
+              (if (eq :sheet (car forms))
+                  ;; compatibility mode for old sheets
+                  (cell-sheet-from-plist (cdr forms))
+                ;; new eieio style
+                (cell-sheet-read forms)))))
     ;; finish initializing cell mode in new buffer
     (setf cell-cached-buffer-positions (make-hash-table :test 'equal))
     (setf cell-cached-buffer-positions* (make-hash-table :test 'equal))
@@ -653,6 +655,15 @@ By default this executes the cell."
 (cl-defmethod initialize-instance :after ((sheet^ cell-sheet) &rest slots)
   "Initialize SHEET and its buffer for Cell-mode."
   (setf cell-current-sheet sheet^)
+      ;; fix up any unbound slots
+  (when (not (slot-boundp sheet^ 'rendering))
+    (setf (slot-value sheet^ 'rendering) nil))
+  (when (not (slot-boundp sheet^ 'buffer))
+    (setf (slot-value sheet^ 'buffer) (current-buffer)))
+  (when (not (slot-boundp sheet^ 'cursor))
+    (setf (slot-value sheet^ 'cursor) '(0 0)))
+  (when (not (slot-boundp sheet^ 'selection))
+    (setf (slot-value sheet^ 'selection) nil)))))
   (let* ((new-buffer (current-buffer))
          (inhibit-read-only t)
          (rows (or (slot-value sheet^ 'rows) 24))
@@ -1440,7 +1451,7 @@ The optional argument FACE is the face to use."
        (insert " ")
        (goto-char (point-max))
        (goto-char (point-min))
-       (insert (cell-sheet-serialize cell-current-sheet))
+       (insert (cell-sheet-serialize-eieio cell-current-sheet))
        (goto-char (point-max))
        (insert (propertize " " 'rendering t 'display ""))
        ;;
@@ -1466,6 +1477,12 @@ If LAZY is non-nil, just redraw without updating."
      (cell-sheet-update-serialization)
      (cell-sheet-do-layout))
    (cell-sheet-do-redraw)))
+
+(defun cell-sheet-serialize-eieio (sheet)
+  (with-temp-buffer
+    (let ((standard-output (current-buffer)))
+      (object-write sheet)
+      (buffer-substring-no-properties (point-min) (point-max)))))
 
 (defun cell-sheet-serialize (sheet)
   "Return a string version of SHEET."
