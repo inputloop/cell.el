@@ -654,7 +654,7 @@ By default this executes the cell."
     (setq-local show-trailing-whitespace nil)
     (setf (buffer-modified-p (current-buffer)) nil)
     (mosaic-insinuate-header-line)
-    (run-at-time 0.5 nil (lambda () (mosaic-insinuate-header-line)))))
+    (run-at-time 0.2 nil (lambda () (mosaic-insinuate-header-line)))))
 
 ;;; Initializing sheets
 
