@@ -613,7 +613,7 @@ By default this executes the cell."
             ([(meta w)] . cell-sheet-copy-to-clipboard)
             ([(control w)] . cell-sheet-cut-to-clipboard)
             ([(control y)] . cell-sheet-paste)))
-    (add-hook 'cell-mode-hook 'cell-replace-sheet-maybe)
+  ;;(add-hook 'cell-mode-hook 'cell-replace-sheet-maybe)
     (cell-start-timer))
 
 (cell-mode-insinuate)
@@ -652,9 +652,7 @@ By default this executes the cell."
     (cell-sheet-update)
     (cell-sheet-after-open-hook cell-current-sheet)
     (setq-local show-trailing-whitespace nil)
-    (setf (buffer-modified-p (current-buffer)) nil)
-    (mosaic-insinuate-header-line)
-    (run-at-time 0.2 nil (lambda () (mosaic-insinuate-header-line)))))
+    (setf (buffer-modified-p (current-buffer)) nil)))
 
 ;;; Initializing sheets
 
