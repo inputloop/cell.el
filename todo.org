@@ -1,6 +1,6 @@
-** TODO Indicate cell sheet class in header-line
-** TODO Ensure dynamically created sheets are of right class
-** TODO 
+** DONE Indicate cell sheet class in header-line
+** DONE Ensure dynamically created sheets are of right class in mosaic
+
 ** TODO [#A] Fully CL-Libify cell.el
 ** DONE use EIEIO-persistent
 

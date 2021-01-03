@@ -635,9 +635,13 @@ By default this executes the cell."
         (setf cell-current-sheet
               (if (eq :sheet (car forms))
                   ;; compatibility mode for old sheets
-                  (cell-sheet-from-plist (cdr forms))
+                  (let ((sh (cell-sheet-from-plist (cdr forms))))
+                    (initialize-instance sh)
+                    sh)
                 ;; new eieio style
                 (cell-sheet-read forms)))))
+    (assert (eieio-object-class cell-current-sheet))
+    (message "Loaded cell sheet with class: %S" (eieio-object-class cell-current-sheet))
     ;; finish initializing cell mode in new buffer
     (setf cell-cached-buffer-positions (make-hash-table :test 'equal))
     (setf cell-cached-buffer-positions* (make-hash-table :test 'equal))
@@ -648,7 +652,9 @@ By default this executes the cell."
     (cell-sheet-update)
     (cell-sheet-after-open-hook cell-current-sheet)
     (setq-local show-trailing-whitespace nil)
-    (setf (buffer-modified-p (current-buffer)) nil)))
+    (setf (buffer-modified-p (current-buffer)) nil)
+    (mosaic-insinuate-header-line)
+    (run-at-time 0.5 nil (lambda () (mosaic-insinuate-header-line)))))
 
 ;;; Initializing sheets
 
@@ -663,7 +669,7 @@ By default this executes the cell."
   (when (not (slot-boundp sheet^ 'cursor))
     (setf (slot-value sheet^ 'cursor) '(0 0)))
   (when (not (slot-boundp sheet^ 'selection))
-    (setf (slot-value sheet^ 'selection) nil)))))
+    (setf (slot-value sheet^ 'selection) nil))
   (let* ((new-buffer (current-buffer))
          (inhibit-read-only t)
          (rows (or (slot-value sheet^ 'rows) 24))
@@ -1615,6 +1621,11 @@ EVENT is the mouse event data."
         (cell-mode)
         (setf cell-current-sheet (make-instance class :rows rs :cols cs))
         (cell-sheet-update)))))
+
+(defun cell-mode-with-class (rows cols class)
+  (interactive)
+  (cell-mode)
+  (setf cell-current-sheet (make-instance class :rows rows :cols cols)))
 
 ;;; Sheet settings are a form of local variable.
 
