@@ -1092,7 +1092,6 @@ The argument FACE specifies which face to use."
                   (> (length val) 0))
          (cell-grid-set grid cursor-row cursor-column (copy-tree instance :copy-vectors))
          (cell-accept-string-value instance (copy-tree val :copy-vectors)))))
-   (cell-sheet-after-update-hook cell-current-sheet)
    (cell-sheet-update)))
 
 (defun cell-sheet-create-comment ()
@@ -1547,35 +1546,37 @@ If LAZY is non-nil, just redraw without updating."
   "Move the mouse cursor to the clicked cell.
 EVENT is the mouse event data."
   (interactive "e")
-  (let ((old-buffer-modified-p (buffer-modified-p (current-buffer))))
-    (cell-with-current-cell-sheet
-     (when event
-       (cl-destructuring-bind (event-type position &optional ignore) event
-         (let* ((clicked-position (posn-point position))
-                (clicked-cell (get-text-property clicked-position 'cell-mode-position)))
-           ;;
-           ;; whether we are in raw display mode
-           (when (cell-sheet-raw-display-p cell-current-sheet)
-             (goto-char clicked-position)
+  (let ((buf (window-buffer (posn-window (cl-second event)))))
+    (let ((old-buffer-modified-p (buffer-modified-p buf)))
+      (cell-with-current-cell-sheet
+       (when event
+         (cl-destructuring-bind (event-type position &optional ignore) event
+           (let* ((clicked-position (posn-point position))
+                  (clicked-cell (get-text-property clicked-position 'cell-mode-position)))
              ;;
-             ;; bounds check 
-             (let ((clicked-row (/ clicked-position (+ 1 (cell-grid-columns grid))))
-                   (clicked-column (+ -1 (% clicked-position (+ 1 (cell-grid-columns grid))))))
-               (when (and (<= 0 clicked-row)
-                          (<= 0 clicked-column)
-                          (< clicked-row (cell-grid-rows grid))
-                          (< clicked-column (cell-grid-columns grid)))
-                 (setf (cell-sheet-cursor cell-current-sheet) 
-                       (list clicked-row clicked-column)))))
-           ;;
-           ;; not in raw display
-           (when clicked-cell
-             (cl-destructuring-bind (clicked-row clicked-column) clicked-cell
-               (setf (cell-sheet-cursor cell-current-sheet) clicked-cell)
-               (when (cell-sheet-selection cell-current-sheet)
-                 (cell-sheet-update-selection-from-mark))
-               (cell-sheet-update)))))))
-    (setf (buffer-modified-p (current-buffer)) old-buffer-modified-p)))
+             ;; whether we are in raw display mode
+             (when (cell-sheet-raw-display-p cell-current-sheet)
+               (goto-char clicked-position)
+               ;;
+               ;; bounds check 
+               (let ((clicked-row (/ clicked-position (+ 1 (cell-grid-columns grid))))
+                     (clicked-column (+ -1 (% clicked-position (+ 1 (cell-grid-columns grid))))))
+                 (when (and (<= 0 clicked-row)
+                            (<= 0 clicked-column)
+                            (< clicked-row (cell-grid-rows grid))
+                            (< clicked-column (cell-grid-columns grid)))
+                   (setf (cell-sheet-cursor cell-current-sheet) 
+                         (list clicked-row clicked-column)))))
+             ;;
+             ;; not in raw display
+             (when clicked-cell
+               (cl-destructuring-bind (clicked-row clicked-column) clicked-cell
+                 (setf (cell-sheet-cursor cell-current-sheet) clicked-cell)
+                 (when (cell-sheet-selection cell-current-sheet)
+                   (cell-sheet-update-selection-from-mark))
+                 (cell-sheet-update)))))))
+      (setf (buffer-modified-p buf) old-buffer-modified-p)
+      (cell-sheet-after-update-hook cell-current-sheet))))
 
 (defun cell-sheet-mouse-execute (event)
   "Execute the clicked cell.  EVENT is the mouse event data."
@@ -1597,14 +1598,17 @@ EVENT is the mouse event data."
 (defun cell-sheet-mouse-select (event)
   "Select a cell with the mouse.  EVENT is the mouse event data."
   (interactive "e")
-  (cell-with-current-cell-sheet
-   (cell-sheet-clear-mark*)
-   (cl-destructuring-bind (event-type position1 position2 &rest ignore) event
-     (let* ((pt1 (get-text-property (posn-point position1) 'cell-mode-position))
-            (pt2 (get-text-property (posn-point position2) 'cell-mode-position))
-            (sel `(,@pt1 ,@pt2)))
-       (setf (cell-sheet-selection cell-current-sheet) sel))
-     (cell-sheet-update))))
+  (let ((buf (current-buffer)))
+    (let ((old-buffer-modified-p (buffer-modified-p (current-buffer))))
+      (cell-with-current-cell-sheet
+       (cell-sheet-clear-mark*)
+       (cl-destructuring-bind (event-type position1 position2 &rest ignore) event
+         (let* ((pt1 (get-text-property (posn-point position1) 'cell-mode-position))
+                (pt2 (get-text-property (posn-point position2) 'cell-mode-position))
+                (sel `(,@pt1 ,@pt2)))
+           (setf (cell-sheet-selection cell-current-sheet) sel))
+         (cell-sheet-update))))
+    (setf (buffer-modified-p buf) old-buffer-modified-p)))
 
 ;;; Additional commands
 
