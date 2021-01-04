@@ -1072,7 +1072,7 @@ The argument FACE specifies which face to use."
 ;;; Interactively creating and editing cells
 
 (cl-defmethod cell-sheet-after-update-hook ((sheet cell-sheet))
-  nil)
+  nil) ;; (run-hook-with-args 'cell-mode-hook))
 
 (cl-defmethod cell-sheet-after-open-hook ((sheet cell-sheet))
   (setf (buffer-modified-p (current-buffer)) nil))
@@ -1480,7 +1480,8 @@ If LAZY is non-nil, just redraw without updating."
    (unless lazy
      (cell-sheet-update-serialization)
      (cell-sheet-do-layout))
-   (cell-sheet-do-redraw)))
+   (cell-sheet-do-redraw)
+   (cell-sheet-after-update-hook cell-current-sheet)))
 
 (defun cell-sheet-serialize-eieio (sheet)
   (with-temp-buffer
