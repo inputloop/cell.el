@@ -1607,8 +1607,8 @@ EVENT is the mouse event data."
                 (pt2 (get-text-property (posn-point position2) 'cell-mode-position))
                 (sel `(,@pt1 ,@pt2)))
            (setf (cell-sheet-selection cell-current-sheet) sel))
-         (cell-sheet-update))))
-    (setf (buffer-modified-p buf) old-buffer-modified-p)))
+         (cell-sheet-update)))
+      (setf (buffer-modified-p buf) old-buffer-modified-p))))
 
 ;;; Additional commands
 
