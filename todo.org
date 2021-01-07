@@ -1,12 +1,9 @@
-** TODO Fix clicking in window causes buffer-modified-p
-
 ** TODO [#A] Fully CL-Libify cell.el
 ** TODO [#B] fix rebooting cell mode should not move cursor
 ** TODO [#A] fix error/corrupted buffer when mouse drag begins/ends outside of cell rendering
 
-** TODO [#A] Don't store :label in file
-** TODO [#A] allow lazy propertization / simplified display
-** TODO [#B] allow inline editing via temporary mode change and Field properties
+** TODO [#A] allow inline editing via temporary mode change and Field properties
+** TODO [#B] allow lazy propertization / simplified display via Font Lock?
 ** TODO [#B] profile and optimize further
 ** TODO [#B] allow cell-sheet to be a window into a larger dataset or table
 ** TODO [#B] fix scrolling to really use window size
