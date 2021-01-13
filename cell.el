@@ -4,9 +4,10 @@
 
 ;; Author: David O'Toole <dto@xelf.me> <deeteeoh1138@gmail.com>
 ;; Maintainer: David O'Toole <dto@xelf.me> <deeteeoh1138@gmail.com>
-;; Package-Requires: ((emacs "24.4"))
+;; Package-Requires: ((emacs "25.1"))
+;; URL: https://gitlab.com/dto/cell-mode
 ;; License: GPLv3
-;; Version: 2.0
+;; Version: 2.1
 
 ;; This program is free software; you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License
@@ -563,7 +564,7 @@ By default this executes the cell."
 (defun cell-mode-insinuate ()
   "Install local keybindings for Cell-mode."
   (interactive)
-  (mapcar (lambda (mapping)
+  (mapc (lambda (mapping)
             (define-key (cell-find-cell-mode-map) (car mapping) (cdr mapping)))
           `(([(control c)(control e)] . cell-sheet-execute)
             ([(return)] . cell-sheet-create-cell)
@@ -977,7 +978,7 @@ The argument FACE specifies which face to use."
                  (1- (length (aref grid 0))))))
    (cell-sheet-update)))
 
-(cl-defun cell-sheet-move-cursor (direction &optional (distance 1))
+(cl-defun cell-sheet-move-cursor (direction &optional (the-distance 1))
   "Move the cursor one cell in DIRECTION."
   (cell-with-current-cell-sheet
    ;; clear selection
@@ -987,17 +988,17 @@ The argument FACE specifies which face to use."
           (cols (cell-grid-columns grid))
           (new-cursor
            (cl-case direction
-             (:up (if (not (cl-minusp (- cursor-row distance)))
-                      (list (- cursor-row distance) cursor-column)
+             (:up (if (not (cl-minusp (- cursor-row the-distance)))
+                      (list (- cursor-row the-distance) cursor-column)
                     cursor))
-             (:left (if (not (cl-minusp (- cursor-column distance)))
-                        (list cursor-row (- cursor-column distance))
+             (:left (if (not (cl-minusp (- cursor-column the-distance)))
+                        (list cursor-row (- cursor-column the-distance))
                       cursor))
-             (:down (if (< cursor-row (- rows distance))
-                        (list (+ cursor-row distance) cursor-column)
+             (:down (if (< cursor-row (- rows the-distance))
+                        (list (+ cursor-row the-distance) cursor-column)
                       cursor))
-             (:right (if (< cursor-column (- cols distance))
-                         (list cursor-row (+ cursor-column distance))
+             (:right (if (< cursor-column (- cols the-distance))
+                         (list cursor-row (+ cursor-column the-distance))
                        cursor)))))
      (setf (cell-sheet-cursor cell-current-sheet) new-cursor)
      ;; choose technique for display
@@ -1007,8 +1008,7 @@ The argument FACE specifies which face to use."
            (let ((buffer-position (+ 1 (cl-second new-cursor)
                                      (* (cl-first new-cursor)
                                         (+ 1 (cell-grid-columns grid))))))
-             (goto-char buffer-position)
-             ))
+             (goto-char buffer-position)))
        ;; display cell-mode cursor with overlay
        (if (cell-sheet-mark cell-current-sheet)
            (progn (cell-remove-rendering*)
@@ -1280,8 +1280,7 @@ The argument FACE specifies which face to use."
           ;; move cursor to right place
           (goto-char (+ 1 cursor-column 
                         (* cursor-row 
-                           (+ 1 (cell-grid-columns grid)))))
-          )
+                           (+ 1 (cell-grid-columns grid))))))
       ;; otherwise render everything all nice with borders and cell backgrounds. 
       ;;
       ;; Render the cell sheet into the buffer
@@ -1331,8 +1330,7 @@ The argument FACE specifies which face to use."
                                                     (cell-label-width cell^)))
                                           face)
                       ;;(cell-fill-space cell^ face)
-                      (cell-insert-blank (- column-width (ceiling (cell-label-width cell^)) 1) face)
-                      )
+                      (cell-insert-blank (- column-width (ceiling (cell-label-width cell^)) 1) face))
                   (cell-insert-blank (- column-width cell-width) face)))
             ;; blank cell
             (progn (setf face (if selection-now-p face (if (cl-evenp col) 'cell-blank-face
