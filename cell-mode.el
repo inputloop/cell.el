@@ -1,4 +1,4 @@
-;;; cell.el --- EIEIO spreadsheet mode -*- lexical-binding: nil; -*-
+;;; cell-mode.el --- EIEIO spreadsheet mode -*- lexical-binding: nil; -*-
 
 ;; Copyright (C) 2006-2007, 2019-2021 by David O'Toole
 
@@ -7,7 +7,7 @@
 ;; Package-Requires: ((emacs "25.1"))
 ;; URL: https://gitlab.com/dto/cell-mode
 ;; License: GPLv3
-;; Version: 2.2
+;; Version: 2.3
 
 ;; This program is free software; you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License
@@ -1874,8 +1874,8 @@ EIEIO-PERSISTENT, this is no longer needed."
              :enable t)
             tool-bar-map))))
 
-(provide 'cell)
+(provide 'cell-mode)
 ;; Local Variables:
 ;; indent-tabs-mode: nil
 ;; End:
-;;; cell.el ends here
+;;; cell-mode.el ends here
