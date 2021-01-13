@@ -1,13 +1,13 @@
 ;;; cell.el --- EIEIO spreadsheet mode -*- lexical-binding: nil; -*-
 
-;; Copyright (C) 2006-2007, 2019-2020 by David O'Toole
+;; Copyright (C) 2006-2007, 2019-2021 by David O'Toole
 
 ;; Author: David O'Toole <dto@xelf.me> <deeteeoh1138@gmail.com>
 ;; Maintainer: David O'Toole <dto@xelf.me> <deeteeoh1138@gmail.com>
 ;; Package-Requires: ((emacs "25.1"))
 ;; URL: https://gitlab.com/dto/cell-mode
 ;; License: GPLv3
-;; Version: 2.1
+;; Version: 2.2
 
 ;; This program is free software; you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License
@@ -36,7 +36,7 @@
 
 ;; Features:
 
-;; - Uses a simple file format based on Lisp property lists.  Cell-mode
+;; - Uses a simple file format based on EIEIO-PERSISTENT.  Cell-mode
 ;;   files can be visited, saved, loaded, and so on just like any other
 ;;   text file.  Works with Emacs' existing autosave, version control,
 ;;   backup, and TRAMP features.
@@ -153,15 +153,11 @@
 
 ;;; EIEIO compatibility macros
 
-;; The following compatibility macros transform code using the old
-;; DEFSTRUCT-style class definitions and slot accessors (which is
-;; still perfectly readable and useful) into the modern way of doing
-;; object orientation in Emacs, namely EIEIO. This is transparent to
-;; the cell and sheet subclasses you define, which can just use the
-;; normal EIEIO slot accessors.
-
-;; Also, for compatibility with the original code, this file does not
-;; use Emacs Lisp LEXICAL-BINDING (see local variable on first line.)
+;; The following compatibility macros transform code using
+;; DEFSTRUCT-style class definitions and slot accessors into
+;; EIEIO. This is transparent to the cell and sheet subclasses you
+;; define, which can just use the normal EIEIO definitions and
+;; accessors.
 
 (cl-defmacro cell-defslot (class slot)
   "Define for CLASS the slot SLOT, emulating legacy DEFSTRUCT slots."
@@ -256,7 +252,7 @@ The list SPECS is the legacy slot definition."
 (cell-defslot cell face)
 
 (cl-defmethod initialize-instance :after ((c cell) &rest slots)
-  "Initialize the cell C."
+  "Initialize the cell C with slot specificiations SLOTS."
   nil)
 
 (cl-defmethod cell-execute ((c cell))
@@ -293,17 +289,21 @@ Subclasses can use this for caching."
 By default this executes the cell."
   (cell-execute c))
 
-(cl-defmethod cell-contains-image-p ((c cell)) nil)
+(cl-defmethod cell-contains-image-p ((c cell))
+  "Return non-nil if the cell C has an image."
+  nil)
 
 ;;; Blinking the cursor and other periodic updates
 
 (defun cell-update-cursor-blink ()
+  "Update the cursor's blinking activity."
   (when (and cell-cursor-blink-p
              (eq major-mode 'cell-mode)
              (eq (current-buffer) (window-buffer)))
     (cell-sheet-display-cursors (overlays-in (point-min) (point-max)))))
 
 (defun cell-start-timer ()
+  "Start the cursor blink timer."
   (when (timerp cell-timer)
     (cancel-timer cell-timer))
   (setf cell-timer (run-with-timer
@@ -311,28 +311,35 @@ By default this executes the cell."
                     'cell-update-cursor-blink)))
 
 (defun cell-stop-timer ()
+  "Stop the cursor blink timer."
   (when (timerp cell-timer)
     (cancel-timer cell-timer)))
 
-(cl-defmethod cell-fill-space ((cell cell) face) nil)
+(cl-defmethod cell-fill-space ((cell cell) face)
+  "Fill the rest of the space for CELL with FACE."
+  nil)
 
 ;;; Lisp expression cells
 
 (cell-defclass cell-expression (cell))
 
 (cl-defmethod cell-set-value :after ((c cell-expression) value)
+  "Update the formatting of the expression cell C with VALUE."
   (setf (cell-label-width c)
         (cell-string-width value))
   (setf (cell-label c) value))
 
 (cl-defmethod cell-find-value ((exp cell-expression))
+  "Read the expression string contained in the cell EXP."
   (when (stringp (cell-value exp))
     (car (read-from-string (cell-value exp)))))
   
 (cl-defmethod cell-execute ((exp cell-expression))
+  "Evaluate the sexp in the cell EXP."
   (eval (cell-find-value exp)))
 
 (cl-defmethod cell-fill-space ((exp cell-expression) face)
+  "Fill the rest of the space for cell EXP with FACE."
   (let ((width (cell-label-width exp)))
     (when width
       (cell-insert-spacer (ceiling width) face))))
@@ -341,9 +348,11 @@ By default this executes the cell."
 
 (cell-defclass cell-comment-cell (cell-expression))
 
-(cl-defmethod cell-collect-value-p ((c cell-comment-cell)) nil)
+(cl-defmethod cell-collect-value-p ((c cell-comment-cell))
+  "Return non-nil if the value of cell C is to be collected.")
 
 (cl-defmethod cell-set-value :after ((c cell-comment-cell) value)
+  "Set the face of the comment cell C after setting VALUE."
   (setf (cell-face c) 'cell-comment-2-face))
 
 ;;; Image cells
@@ -352,6 +361,7 @@ By default this executes the cell."
 (cell-defslot cell image)
 
 (cl-defmethod cell-set-value :after ((i cell-image-cell) image-name)
+  "Set image test properties for the image cell I after setting IMAGE-NAME."
   (setf (cell-image i)
         (create-image (car (read-from-string image-name))))
   (setf (cell-label-width i)
@@ -359,7 +369,9 @@ By default this executes the cell."
   (setf (cell-label i)
         (propertize "  " 'display (cell-image i))))
 
-(cl-defmethod cell-contains-image-p ((c cell-image-cell)) t)
+(cl-defmethod cell-contains-image-p ((c cell-image-cell))
+  "Return non-nil when the cell C has an image."
+  t)
 
 ;;; Internal grid data structure
 
@@ -367,7 +379,7 @@ By default this executes the cell."
   "Make a new grid with ROWS rows and COLS columns."
   (let ((grid (make-vector rows nil)))
     (dotimes (row rows)
-      (setf (aref grid row) (make-vector cols nil))) 
+      (setf (aref grid row) (make-vector cols nil)))
     grid))
 
 (defun cell-grid-get (grid row col)
@@ -396,12 +408,12 @@ By default this executes the cell."
   (let* ((len (length oldvec))
          (newvec (make-vector (+ len 1) nil)))
     (dotimes (i (+ 1 len))
-      (setf (aref newvec i) (cond 
+      (setf (aref newvec i) (cond
                              (( < i pos)
                               (aref oldvec i))
                              (( equal i pos)
                               elt)
-                             (( > i pos) 
+                             (( > i pos)
                               (aref oldvec (- i 1))))))
     newvec))
 
@@ -444,10 +456,10 @@ By default this executes the cell."
                name ; string title, currently ignored
                rows ; initial requested number of rows
                cols ; initial requested number of columns
-               mark ; nil when there is no mark, or (LIST ROW COL) 
+               mark ; nil when there is no mark, or (LIST ROW COL)
                (rendering) ; cached buffer text of spreadsheet
                widths ; column widths
-               row-header-width ; width of leftmost column 
+               row-header-width ; width of leftmost column
                (buffer) ; what buffer is this sheet in?
                (cursor) ; what cell is the user pointing at? (LIST ROW COL)
                (selection) ; rectangle in this form: (row-1 col-1 row-2 col-2)
@@ -490,6 +502,7 @@ By default this executes the cell."
      ,@body))
 
 (defun cell-sheet-read (forms)
+  "Read the persistent cell sheet from FORMS."
   (let ((sheet (eieio-persistent-convert-list-to-object forms)))
     (prog1 sheet)))
 
@@ -517,7 +530,7 @@ By default this executes the cell."
         (cursor (cell-sheet-cursor cell-current-sheet)))
     (if (null cell-undo-history)
         (progn (beep) (message "Cell-mode: undo history is empty."))
-      (progn 
+      (progn
         (setf cell-current-sheet
               (cell-sheet-read
                (car (read-from-string (pop cell-undo-history)))))
@@ -605,16 +618,15 @@ By default this executes the cell."
             ([(control n)] . cell-sheet-move-cursor-down)
             ([(control p)] . cell-sheet-move-cursor-up)
             ;; the mouse
-            ([(mouse-1)] . cell-sheet-mouse-move-cursor)          
+            ([(mouse-1)] . cell-sheet-mouse-move-cursor)
             ([(mouse-3)] . mouse-major-mode-menu)
             ([(mouse-5)] . cell-sheet-page-down)
             ([(mouse-4)] . cell-sheet-page-up)
-            ([(drag-mouse-1)] . cell-sheet-mouse-select)        
+            ([(drag-mouse-1)] . cell-sheet-mouse-select)
             ;; cut and paste
             ([(meta w)] . cell-sheet-copy-to-clipboard)
             ([(control w)] . cell-sheet-cut-to-clipboard)
             ([(control y)] . cell-sheet-paste)))
-  ;;(add-hook 'cell-mode-hook 'cell-replace-sheet-maybe)
     (cell-start-timer))
 
 (cell-mode-insinuate)
@@ -658,7 +670,7 @@ By default this executes the cell."
 ;;; Initializing sheets
 
 (cl-defmethod initialize-instance :after ((sheet^ cell-sheet) &rest slots)
-  "Initialize SHEET and its buffer for Cell-mode."
+  "Initialize SHEET^ and its buffer for Cell-mode with init slots SLOTS."
   (setf cell-current-sheet sheet^)
       ;; fix up any unbound slots
   (when (not (slot-boundp sheet^ 'rendering))
@@ -732,6 +744,7 @@ By default this executes the cell."
 ;;; Cut, copy, paste
 
 (defun cell-copy-cell (c)
+  "Copy the cell C to avoid data sharing."
   (when c
     (let ((class (eieio-object-class c)))
       (with-slots (label value face) c
@@ -769,7 +782,7 @@ By default this executes the cell."
        (message "The selection was copied to the clipboard.")))))
 
 (defun cell-sheet-blank-selection (&optional sel)
-  "Remove all cells within the current selection."
+  "Remove all cells within the current selection SEL."
   (interactive)
   (cell-with-current-cell-sheet
    (when (or sel selection)
@@ -822,12 +835,12 @@ By default this executes the cell."
 
 ;;; Blanking a cell sheet
 
-(cl-defmethod cell-sheet-blank ((sheet^ cell-sheet) rows cols)
-  ;; don't use this function interactively; it doesn't save undo history!
+(cl-defmethod cell-sheet-blank ((sheet cell-sheet) rows cols)
+  "Clear the sheet SHEET with a blank one with ROWS and COLS."
   (let ((inhibit-read-only t))
-    (setf (cell-sheet-grid sheet^) 
+    (setf (cell-sheet-grid sheet)
           (cell-make-grid rows cols))
-    (setf (cell-sheet-cursor sheet^) (list 0 0))))
+    (setf (cell-sheet-cursor sheet) (list 0 0))))
 
 ;;; The cursor and the selection
 
@@ -846,9 +859,9 @@ By default this executes the cell."
   "Display a cursor using overlays at the give ROW and COLUMN.
 The argument FACE specifies the face to use for the overlay."
   (cell-with-current-cell-sheet
-   (let* ((inhibit-read-only t)  
+   (let* ((inhibit-read-only t)
           (face (or face 'cell-cursor-face))
-          (cursor-width (- (aref stops (+ column 1)) 
+          (cursor-width (- (aref stops (+ column 1))
                            (aref stops column))))
      (let ((p (gethash (list row column) cell-cached-buffer-positions))
            (p* (gethash (list row column) cell-cached-buffer-positions*)))
@@ -865,10 +878,10 @@ The argument FACE specifies the face to use for the overlay."
   "Highlight a cell by adding face properties at ROW and COLUMN.
 The argument FACE specifies which face to use."
   (cell-with-current-cell-sheet
-   (let* ((inhibit-read-only t)  
+   (let* ((inhibit-read-only t)
           (cursor-width (if (and cell^ (cell-label-width cell^))
                             (ceiling (cell-label-width cell^))
-                          (- (aref stops (+ column 1)) 
+                          (- (aref stops (+ column 1))
                              (aref stops column))))
           (face (or face 'cell-cursor-face)))
      (cell-move-point-to-rendering)
@@ -912,7 +925,7 @@ The argument FACE specifies which face to use."
                  (setf current-cell (cell-grid-get grid r c))
                  (let ((cursor-width (if (and current-cell (cell-label-width current-cell))
                                          (ceiling (cell-label-width current-cell))
-                                       (- (aref stops (+ c 1)) 
+                                       (- (aref stops (+ c 1))
                                           (aref stops c)))))
                    (cl-incf end cursor-width)))
                (add-text-properties pos end
@@ -931,7 +944,7 @@ The argument FACE specifies which face to use."
              (<= (min c1 c2) cxx (max c1 c2)))))))
 
 (defun cell-sheet-display-cursors (&optional just-delete)
-  "Display all the cursors."
+  "Display all the cursors, or just delete them when JUST-DELETE is non-nil."
   (cell-with-current-cell-sheet
    ;; remove overlays. there is a fix for emacs-21 here, which does
    ;; not have the function (remove-overlays)
@@ -951,7 +964,7 @@ The argument FACE specifies which face to use."
    (cell-sheet-update)))
 
 (defun cell-sheet-move-eol ()
-  "Move to the end of the line." 
+  "Move to the end of the line."
   (interactive)
   (cell-with-current-cell-sheet
    (with-slots (cursor grid) cell-current-sheet
@@ -979,7 +992,7 @@ The argument FACE specifies which face to use."
    (cell-sheet-update)))
 
 (cl-defun cell-sheet-move-cursor (direction &optional (the-distance 1))
-  "Move the cursor one cell in DIRECTION."
+  "Move the cursor one cell in DIRECTION, in THE-DISTANCE units."
   (cell-with-current-cell-sheet
    ;; clear selection
    (setf (cell-sheet-selection cell-current-sheet) nil)
@@ -1041,6 +1054,7 @@ The argument FACE specifies which face to use."
   (cell-sheet-move-cursor :right))
 
 (defun cell-sheet-page-up ()
+  "Move the cursor one page upward."
   (interactive)
   ;; check for correct major mode, in case mouse is over a cell-mode
   ;; buffer that isn't the current buffer.
@@ -1048,6 +1062,7 @@ The argument FACE specifies which face to use."
     (cell-sheet-move-cursor :up 10)))
 
 (defun cell-sheet-page-down ()
+  "Move the cursor one page downward."
   (interactive)
   (when (eq major-mode 'cell-mode)
     (cell-sheet-move-cursor :down 10)))
@@ -1072,12 +1087,14 @@ The argument FACE specifies which face to use."
 ;;; Interactively creating and editing cells
 
 (cl-defmethod cell-sheet-after-update-hook ((sheet cell-sheet))
-  nil) ;; (run-hook-with-args 'cell-mode-hook))
+  "This method is invoked after every update to the SHEET."
+  nil)
 
 (cl-defmethod cell-sheet-after-open-hook ((sheet cell-sheet))
+  "This method is invoked after the SHEET is opened."
   (setf (buffer-modified-p (current-buffer)) nil))
 
-(defun cell-sheet-create-cell (&optional no-change)
+(defun cell-sheet-create-cell ()
   "Create or edit a cell at the cursor."
   (interactive)
   (cell-with-current-cell-sheet
@@ -1086,8 +1103,8 @@ The argument FACE specifies which face to use."
           (value (when the-cell (cell-value the-cell))))
      (let* ((instance (or the-cell (make-instance 'cell-expression)))
             (default (cell-value instance))
-            (val (if no-change default (read-from-minibuffer "Enter value: "
-                                                             (when the-cell default)))))
+            (val (read-from-minibuffer "Enter value: "
+                                       (when the-cell default))))
        (when (and (stringp val)
                   (> (length val) 0))
          (cell-grid-set grid cursor-row cursor-column (copy-tree instance :copy-vectors))
@@ -1095,6 +1112,7 @@ The argument FACE specifies which face to use."
    (cell-sheet-update)))
 
 (defun cell-sheet-create-comment ()
+  "Create a comment cell."
   (interactive)
   (cell-with-current-cell-sheet
    (cell-push-undo-history)
@@ -1121,7 +1139,7 @@ The argument FACE specifies which face to use."
   "Insert a row at the cursor."
   (interactive)
   (cell-push-undo-history)
-  (cell-with-current-cell-sheet 
+  (cell-with-current-cell-sheet
    (setf (cell-sheet-grid cell-current-sheet) (cell-grid-insert-row grid cursor-row))
    (cell-sheet-update)))
 
@@ -1155,10 +1173,12 @@ The argument FACE specifies which face to use."
 
 ;;; Collecting cells
 
-;; This is useful when you want to process the contents of a sheet. 
+;; This is useful when you want to process the contents of a sheet.
 
 (defun cell-collect-cells (sheet &optional collect-all-p)
-  "Return a flat list of all the cells in the SHEET."
+  "Return a flat list of all the cells in the SHEET.
+If COLLECT-ALL-P is non-nil, ignore the value of each cell's
+CELL-COLLECT-VALUE-P."
   (let ((grid (cell-sheet-grid cell-current-sheet))
         (cell^ nil)
         (cells nil))
@@ -1170,7 +1190,9 @@ The argument FACE specifies which face to use."
     (nreverse cells)))
 
 (defun cell-collect-cells-by-row (sheet &optional collect-all-p)
-  "Return a list of rows of all the cells in the SHEET."
+  "Return a list of rows of all the cells in the SHEET.
+If COLLECT-ALL-P is non-nil, ignore the value of each cell's
+CELL-COLLECT-VALUE-P."
   (let ((grid (cell-sheet-grid cell-current-sheet))
         (rows nil))
     (dotimes (r (cell-grid-rows grid))
@@ -1197,6 +1219,7 @@ The argument FACE specifies which face to use."
     (nreverse rows)))
 
 (defun cell-collect-cells-by-row-no-settings (sheet)
+  "Return a list of all the cells in SHEET, without settings cells."
   (let ((rows (cell-collect-cells-by-row sheet))
         (results ()))
     (dolist (row rows)
@@ -1218,7 +1241,7 @@ The argument FACE specifies which face to use."
        (setf (cell-sheet-row-header-width cell-current-sheet)
              (max 2 (length (format "%d" rows))))
        ;; factor in headers if needed
-       (setf (aref (cell-sheet-column-stops cell-current-sheet) 0) 
+       (setf (aref (cell-sheet-column-stops cell-current-sheet) 0)
              (if (cell-sheet-headers-p cell-current-sheet)
                  (cell-sheet-row-header-width cell-current-sheet)
                0))
@@ -1481,6 +1504,7 @@ If LAZY is non-nil, just redraw without updating."
    (cell-sheet-after-update-hook cell-current-sheet)))
 
 (defun cell-sheet-serialize-eieio (sheet)
+  "Use EIEIO-PERSISTENT to serialize the SHEET."
   (with-temp-buffer
     (let ((standard-output (current-buffer)))
       (object-write sheet)
@@ -1510,7 +1534,7 @@ If LAZY is non-nil, just redraw without updating."
         (buffer-substring-no-properties (point-min) (point-max))))))
 
 (defun cell-sheet-from-plist (plist &optional class)
-  "Return a new cell-sheet object constructed from the data in PLIST."
+  "Return a new cell-sheet object constructed from the data in PLIST, with CLASS."
   (let* ((name (cl-getf plist :name))
          (rows (cl-getf plist :rows))
          (cols (cl-getf plist :cols))
@@ -1611,7 +1635,7 @@ EVENT is the mouse event data."
 ;;; Additional commands
 
 (cl-defun cell-sheet-create (&optional r0 c0 (class 'cell-sheet))
-  "Create a new cell sheet with R0 rows and C0 columns."
+  "Create a new cell sheet with R0 rows and C0 columns, of the chosen CLASS."
   (interactive)
   (let ((r (or r0 (read-from-minibuffer "Create cell-sheet with how many rows? " "24")))
         (c (or c0 (read-from-minibuffer "...with how many columns? " "40"))))
@@ -1624,6 +1648,7 @@ EVENT is the mouse event data."
         (cell-sheet-update)))))
 
 (defun cell-mode-with-class (rows cols class)
+  "Create a cell-mode sheet with ROWS rows and COLS columns, of the class CLASS."
   (interactive)
   (cell-mode)
   (setf cell-current-sheet (make-instance class :rows rows :cols cols)))
@@ -1634,6 +1659,7 @@ EVENT is the mouse event data."
 (make-variable-buffer-local 'cell-sheet-class)
 
 (cl-defmethod cell-sheet-collect-settings ((sheet cell-sheet))
+  "Return a list of all the settings values in SHEET."
   (let ((values (mapcar #'cell-find-value (cell-collect-cells sheet)))
         (results ()))
     (dolist (value values)
@@ -1642,6 +1668,7 @@ EVENT is the mouse event data."
     (nreverse results)))
 
 (cl-defmethod cell-sheet-collect-settings-cells ((sheet cell-sheet))
+  "Return a list of all the settings cells in SHEET."
   (let ((cells (cell-collect-cells sheet :collect-all-p))
         (results ()))
     (dolist (c cells)
@@ -1650,6 +1677,7 @@ EVENT is the mouse event data."
     results))
 
 (cl-defmethod cell-sheet-change-setting ((sheet cell-sheet) setting-name value)
+  "Change the SHEET setting SETTING-NAME to VALUE."
   (let ((cells (cell-sheet-collect-settings-cells sheet)))
     (dolist (c cells)
       (let ((vec (cell-find-value c)))
@@ -1657,6 +1685,7 @@ EVENT is the mouse event data."
           (cell-accept-string-value c (prin1-to-string (vector setting-name value))))))))
 
 (cl-defmethod cell-sheet-setting-value ((sheet cell-sheet) setting-name)
+  "Return the value of the SHEET's setting SETTING-NAME."
   (let ((settings (cell-sheet-collect-settings sheet)))
     (cl-block finding
       (dolist (setting settings)
@@ -1664,45 +1693,24 @@ EVENT is the mouse event data."
           (cl-return-from finding (aref setting 1)))))))
 
 (defun cell-apply-settings (settings)
+  "Apply each of the variable SETTINGS."
   (dolist (binding settings)
     (set (aref binding 0)
          (aref binding 1))))
 
 (cl-defmethod cell-sheet-apply-settings ((sheet cell-sheet))
+  "Apply each of the variable settings in SHEET."
   (with-current-buffer (slot-value sheet 'buffer)
     (cell-apply-settings (cell-sheet-collect-settings sheet))))
 
 (defun cell-sheet-class (sheet)
+  "Return the class setting of this SHEET.
+As serialization class matching is now handled by
+EIEIO-PERSISTENT, this is no longer needed."
   (cell-sheet-setting-value sheet 'cell-sheet-class))
 
-(defun cell-subclass-sheet (sheet)
-  (let ((class (cell-sheet-class sheet)))
-    (when (null class)
-      (error "Cell-mode: no CELL-SHEET-CLASS setting in this sheet."))
-    (let* ((new-sheet (make-instance class))
-           (slots '(name mark rendering widths row-header-width
-                         buffer cursor selection grid
-                         column-stops buffer borders-p headers-p
-                         raw-display-p properties)))
-      (dolist (slot slots)
-        (setf (slot-value new-sheet slot)
-              (slot-value sheet slot)))
-      new-sheet)))
-
-(defun cell-replace-sheet (sheet)
-  (with-current-buffer (slot-value sheet 'buffer)
-    (setf cell-current-sheet
-          (cell-subclass-sheet sheet))))
-
-(defun cell-replace-sheet-maybe ()
-  (cell-with-current-cell-sheet
-   (when (cell-sheet-class cell-current-sheet)
-     (cell-replace-sheet cell-current-sheet)
-     (cell-sheet-after-open-hook cell-current-sheet)
-     (cell-sheet-update)
-     (setf (buffer-modified-p (current-buffer)) nil))))
-
 (defun cell-sexp->cell (sexp)
+  "Turn the cell expression value SEXP into an expression cell."
   (let (cell)
     (when (and (consp sexp)
                (symbolp (cl-first sexp))
@@ -1716,6 +1724,7 @@ EVENT is the mouse event data."
     cell))
 
 (defun cell-copy-cells-from-sexps (sexps)
+  "Copy the cells rows in SEXPS to the clipboard."
   (let ((rows (mapcar (lambda (row)
                         (mapcar #'cell-sexp->cell row))
                       sexps)))
@@ -1812,6 +1821,7 @@ EVENT is the mouse event data."
 (defvar cell-mode-tool-bar-map ())
 
 (defun cell-enable-tool-bar-map ()
+  "Enable the cell-mode tool bar."
   (setf cell-mode-tool-bar-map
         (when (keymapp tool-bar-map)
           (let ((tool-bar-map (make-sparse-keymap)))
