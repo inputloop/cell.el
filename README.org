@@ -16,10 +16,10 @@ file:cell2.png
 
 * Features
 
- - Uses a simple file format based on Lisp property lists.  Cell-mode
+ - Uses a simple file format based on EIEIO-PERSISTENT.  Cell-mode
    files can be visited, saved, loaded, and so on just like any other
    text file.  Works with Emacs' existing autosave, version control,
-   and backup features.
+   TRAMP, and backup features.
  - You can cut, copy, and paste cells between sheets using typical
    Emacs shortcuts, as well as insert and delete rows and
    columns. (CUA-mode not yet supported.)
@@ -34,13 +34,13 @@ file:cell2.png
 
 * Issues
 
+ - Cursor can display incorrectly in cells with images and some
+   Unicode characters.
+ - No data dependency resolution, but this will be implemented.
  - Needs more optimization.
- - Cursor can display incorrectly in cells with Unicode characters
-   or images.
- - No data dependency resolution or formulae, but these will be
-   implemented.
- - Columns are sometimes misaligned; restart Cell-mode with "M-x
-   cell-mode RET" to restore proper formatting.
+ - Columns are sometimes misaligned when changing font sizes in a
+   frame; restart Cell-mode with "M-x cell-mode RET" to restore proper
+   formatting.
 
 * Applications
 
