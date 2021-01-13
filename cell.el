@@ -6,7 +6,7 @@
 ;; Maintainer: David O'Toole <dto@xelf.me> <deeteeoh1138@gmail.com>
 ;; Package-Requires: ((emacs "24.4"))
 ;; License: GPLv3
-;; Version: 1.2
+;; Version: 2.0
 
 ;; This program is free software; you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License
@@ -143,7 +143,7 @@
 
 ;;; Code:
 
-(eval-when-compile (require 'cl-lib))
+(require 'cl-lib)
 (eval-when-compile (require 'cl))
 (require 'eieio)
 (require 'eieio-base)
