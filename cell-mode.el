@@ -2,8 +2,8 @@
 
 ;; Copyright (C) 2006-2007, 2019-2021 by David O'Toole
 
-;; Author: David O'Toole <dto@xelf.me> <deeteeoh1138@gmail.com>
-;; Maintainer: David O'Toole <dto@xelf.me> <deeteeoh1138@gmail.com>
+;; Author: David O'Toole <deeteeoh1138@gmail.com>
+;; Maintainer: David O'Toole <deeteeoh1138@gmail.com>
 ;; Package-Requires: ((emacs "25.1"))
 ;; URL: https://gitlab.com/dto/cell-mode
 ;; License: GPLv3
@@ -619,7 +619,7 @@ By default this executes the cell."
             ([(control p)] . cell-sheet-move-cursor-up)
             ;; the mouse
             ([(mouse-1)] . cell-sheet-mouse-move-cursor)
-            ([(mouse-3)] . mouse-major-mode-menu)
+            ([(mouse-3)] . menu-bar-open)
             ([(mouse-5)] . cell-sheet-page-down)
             ([(mouse-4)] . cell-sheet-page-up)
             ([(drag-mouse-1)] . cell-sheet-mouse-select)
