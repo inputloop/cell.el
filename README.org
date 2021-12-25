@@ -6,13 +6,9 @@ further extended by defining application-specific Emacs Lisp minor
 modes which supply new cell and spreadsheet classes via Emacs'
 included object system, EIEIO.
 
-* Screenshot and videos
+* Video demo
 
--  [[https://youtu.be/weCgCZCowv4][YouTube video 1]] 
--  [[https://www.youtube.com/upload_thumbnail?v=sgVRMkTP9-E][YouTube video 2]]
--  [[https://www.youtube.com/watch?v=E74iXyTLpyE][YouTube video 3]]
-
-file:cell2.png
+ - https://emacsconf.org/2019/talks/18/
 
 * Features
 
@@ -44,4 +40,4 @@ file:cell2.png
 
 * Applications
 
- - Check out [[https://gitlab.com/dto/mosaic-el][Mosaic]] for examples of using Cell-mode in an application.
+ - Check out [[https://gitlab.com/dto/mosaic][Mosaic]] for examples of using Cell-mode in an application.
