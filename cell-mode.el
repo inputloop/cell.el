@@ -148,6 +148,7 @@
 ;;; Code:
 
 (require 'cl-lib)
+(eval-when-compile (require 'cl))
 (require 'eieio)
 (require 'eieio-base)
 (require 'eieio-custom)
