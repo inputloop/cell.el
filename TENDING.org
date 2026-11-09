@@ -1,0 +1,79 @@
+#+TITLE: Tending cell-mode
+
+* What this repository is
+
+This is David O'Toole's /cell-mode/, an object-oriented spreadsheet
+control for GNU Emacs, with its complete history from
+https://gitlab.com/dto/cell-mode (41 commits, the last one =b600fc8=,
+2021-12-26).  Everything up to that commit is David's, unchanged.
+
+David has said to mint a stand-alone recipe from here and that he will
+decide later what, if anything, he wants to do with it.  Until he says
+otherwise we tend this copy as the working version, and we offer every
+change back to him.
+
+The repository is named =cell.el=, the name the project is known by.
+The library inside is =cell-mode.el= and provides the =cell-mode=
+feature.  David's older 2019 line, https://gitlab.com/dto/cell.el (MIT
+licence, provides =cell=), is a separate thing and is not part of this
+repository.
+
+* The recipe
+
+| command          | what it does                                                 |
+|------------------+--------------------------------------------------------------|
+| =make=           | byte-compile, then run the tests                             |
+| =make test=      | run the ERT suite in =t/= against the source                 |
+| =make prove-red= | show the suite can fail: a planted failure must turn it red  |
+| =make compile=   | byte-compile =cell-mode.el= (warnings shown, not fatal)      |
+| =make clean=     | remove compiled files                                        |
+
+Use =make EMACS=/path/to/emacs test= to test a particular Emacs.  Last
+run: GNU Emacs 29.3, 20 tests, 16 passed, 3 known failures, 1 skipped
+(the prove-red test, which runs only under =make prove-red=).
+
+The suite covers the grid data structure, cells, and a live sheet in a
+buffer: opening, rendering labels, collecting by row, saving and
+reading back through EIEIO-PERSISTENT, and undo.  A batch or tty Emacs
+has no font to measure glyphs with, so when there is no graphic display
+the tests measure label width in columns.  That is the only stand-in
+the suite uses.
+
+* Known defects
+
+These are pinned in the tests as expected failures, so the suite stays
+green and says plainly what is broken.  When one is fixed, ERT reports
+an unexpected pass and the marker comes off.  None is fixed here yet.
+
+1. *Sheet settings are never found.*  =cell-sheet-collect-settings=
+   binds =cl-values= but loops over the unrelated global =values=, so
+   =cell-sheet-setting-value= returns nil.
+2. *Comment cells are collected.*  The comment cell's
+   =cell-collect-value-p= method has a docstring and no body, so it
+   returns the docstring, which is non-nil.
+3. *=cell-sexp->cell= errors on a value that is not a string*, e.g.
+   =7=: the expression cell measures the raw value as a string
+   (=wrong-type-argument sequencep 7=).
+
+Byte-compiling under Emacs 29 also shows warnings worth small,
+separate commits: =(require 'cl)= is deprecated; =setf= on
+=buffer-modified-p= and =point-at-bol= are obsolete; =image-size= is
+not declared.  The free =row= and =col= warnings in =cell-insert= and
+its siblings are expected, because the file uses dynamic binding.
+
+* Relation to dungeon-mode
+
+dungeon-mode's =dm-cell= (an editor for dungeon org tables) took its
+design from cell-mode: a grid of objects, mouse-first editing,
+undo/redo.  It shares no code with this repository.  Its plan
+(=MENTAT-CELL-UI-PLAN.org= in dungeon) to use cell-mode as a view
+backend is still open.
+
+* Licence
+
+=cell-mode.el= is David O'Toole's, under the GNU GPL version 3 or (at
+your option) any later version; see =LICENSE=.  The recipe files we
+added (=Makefile=, =t/cell-mode-tests.el=, this file) are under the
+same terms: GPL-3.0-or-later.
+
+Copyright (C) 2026 Corwin Brust <corwin@bru.st>
