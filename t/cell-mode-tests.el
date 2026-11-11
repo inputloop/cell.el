@@ -410,7 +410,7 @@ value as a string, (wrong-type-argument sequencep 7)."
 
 (provide 'cell-mode-tests)
 
-;; Copyright (C) 2026 Corwin Brust <corwin@bru.st>
+;; Copyright (C) 2026 Corwin Brust, Bryant Frankford (INPUTLOOP)
 ;; SPDX-License-Identifier: GPL-3.0-or-later
 
 ;;; cell-mode-tests.el ends here

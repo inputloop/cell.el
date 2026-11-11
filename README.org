@@ -1,5 +1,10 @@
 #+TITLE: Cell-mode
 
+/Created by David O'Toole ([[https://gitlab.com/dto/cell-mode][gitlab.com/dto/cell-mode]]).  This copy is
+maintained by INPUTLOOP, with fixes and a test suite since David's 2.3;
+see [[file:TENDING.org][TENDING.org]] for what changed, how to build and test it, and
+its history./
+
 Cell-mode is an object-oriented spreadsheet control for GNU Emacs. It
 provides a major mode for spreadsheet-based user interfaces; it can be
 further extended by defining application-specific Emacs Lisp minor

@@ -38,5 +38,5 @@ prove-red:
 clean:
 	rm -f *.elc t/*.elc
 
-# Copyright (C) 2026 Corwin Brust <corwin@bru.st>
+# Copyright (C) 2026 Corwin Brust, Bryant Frankford (INPUTLOOP)
 # SPDX-License-Identifier: GPL-3.0-or-later

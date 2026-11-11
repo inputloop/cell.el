@@ -5,20 +5,79 @@
 This is David O'Toole's /cell-mode/, an object-oriented spreadsheet
 control for GNU Emacs, with its complete history from
 https://gitlab.com/dto/cell-mode (41 commits, the last one =b600fc8=,
-2021-12-26).  Everything up to that commit is David's, unchanged.
+2021-12-26, version 2.3).  Everything up to that commit is David's,
+unchanged.  What we have added since is listed below, one change per
+commit, so each can be read, reverted or taken back upstream on its
+own.
 
-David has said to mint a stand-alone recipe from here and that he will
-decide later what, if anything, he wants to do with it.  Until he says
-otherwise we tend this copy as the working version, and we offer every
-change back to him.
+David has said to mint a stand-alone recipe from here; what, if
+anything, he wants to do with it himself is his to decide.  Until he
+says otherwise we keep this copy available and working, for ourselves
+and for anyone else who uses it, and we offer every change back to him.
 
 The repository is named =cell.el=, the name the project is known by.
 The library inside is =cell-mode.el= and provides the =cell-mode=
-feature.  David's older 2019 line, https://gitlab.com/dto/cell.el (MIT
-licence, provides =cell=), is a separate thing and is not part of this
-repository.
+feature.  David's older line, https://gitlab.com/dto/cell.el (2019,
+MIT licence, provides =cell=), is a separate thing and is not part of
+this repository.
 
-* The recipe
+* History and thanks
+
+David first wrote cell-mode in 2006 and presented it at EmacsConf 2019
+as "Object oriented spreadsheets with example applications"
+(https://emacsconf.org/2019/talks/18/).  The application he showed
+it with was his own: Mosaic, a music sequencer
+(https://gitlab.com/dto/mosaic).  The idea underneath it is to drive a
+user interface inside Emacs from a grid of EIEIO objects.  Each cell is
+an object that can hold any Lisp value and answer events in its own
+way, and an application subclasses cells and sheets to get the
+behaviour it needs.
+
+dungeon-mode (https://savannah.nongnu.org/projects/dungeon) took that
+design as the model for editing a dungeon's tables in Emacs.  Its
+editor, =dm-cell=, draws its own grid and shares no code with this
+repository, but the approach of encapsulated cells driving the
+interface is David's.  As far as we know, dungeon is the first project
+downstream of his to build on it.  If you know of an earlier one,
+please tell us.
+
+David chose EIEIO at a time when Emacs Lisp programmers often heard
+that the class system was more trouble than it was worth, and he made
+it work.  That example encouraged dungeon to keep using EIEIO, which
+also shaped its card-game experiments, now on their own as
+card-games.el in MELPA.  Thank you, David.
+
+* What changed since 2.3
+
+| commit                                                        | what                                                |
+|---------------------------------------------------------------+-----------------------------------------------------|
+| Add a stand-alone recipe                                      | Makefile, first ERT suite, these notes              |
+| tests: drive the commands as a user would                     | tests for every interactive command; found bug 4    |
+| Fix sheet settings never being found                          | bug 1                                               |
+| Fix comment cells being collected as data                     | bug 2                                               |
+| Fix expression cells erroring on values that are not strings  | bug 3                                               |
+| Fix cut losing the cell when nothing is selected              | bug 4                                               |
+| Compile without warnings on Emacs 29                          | no change in behaviour                              |
+| Package headers for the inputloop copy: version 2.4           | Version, URL, Maintainer, SPDX licence identifier   |
+| CI: compile, test and prove-red                               | GitHub Actions, Emacs 25.3 to 30.1 and the snapshot |
+
+The four bugs:
+
+1. *Sheet settings were never found.*  =cell-sheet-collect-settings=
+   bound =cl-values= but looped over the unrelated global =values=.
+2. *Comment cells were collected as data.*  Their
+   =cell-collect-value-p= method had only a docstring, so it returned
+   that string, which is non-nil.
+3. *Expression cells signalled an error for values that are not
+   strings* (=cell-sexp->cell= on =7=, for example).  Such values are
+   now labelled with their printed form.
+4. *Cutting with nothing selected lost the cell*: it was blanked
+   without being copied to the clipboard first.
+
+Each was first pinned in the tests as an expected failure, then fixed
+in its own commit, which turned the pin back into an ordinary test.
+
+* Build and test
 
 | command          | what it does                                                 |
 |------------------+--------------------------------------------------------------|
@@ -29,51 +88,48 @@ repository.
 | =make clean=     | remove compiled files                                        |
 
 Use =make EMACS=/path/to/emacs test= to test a particular Emacs.  Last
-run: GNU Emacs 29.3, 20 tests, 16 passed, 3 known failures, 1 skipped
-(the prove-red test, which runs only under =make prove-red=).
+local run: GNU Emacs 29.3, byte-compile silent, 35 tests, 34 passed, 1
+skipped (the prove-red test, which runs only under =make prove-red=).
+CI runs the same three targets on Emacs 25.3, 26.3, 27.2, 28.2, 29.4
+and 30.1; its results are on the repository's Actions tab.
 
-The suite covers the grid data structure, cells, and a live sheet in a
-buffer: opening, rendering labels, collecting by row, saving and
-reading back through EIEIO-PERSISTENT, and undo.  A batch or tty Emacs
-has no font to measure glyphs with, so when there is no graphic display
-the tests measure label width in columns.  That is the only stand-in
-the suite uses.
+The suite covers the grid data structure, cells, a live sheet in a
+buffer (rendering, collecting, saving and reading back through
+EIEIO-PERSISTENT, undo), and every interactive command driven the way a
+user drives it, with minibuffer answers supplied by the test.  A batch
+or tty Emacs has no font to measure glyphs with, so when there is no
+graphic display the tests measure label width in columns instead.  That
+is the only stand-in the suite uses.
 
-* Known defects
+* Still open
 
-These are pinned in the tests as expected failures, so the suite stays
-green and says plainly what is broken.  When one is fixed, ERT reports
-an unexpected pass and the marker comes off.  None is fixed here yet.
+- David's =todo.org= items (an =eieio-persistent= naming change, and
+  paste/undo through =cell-sheet-read=) do not reproduce on Emacs 29.3.
+  Both paths are covered by tests; the items stay open until someone
+  can say what they were.
+- The cursor-blink timer starts when the file is loaded and runs every
+  half second from then on, even if no sheet is ever opened.  It does
+  nothing outside Cell-mode buffers.
+- The file still uses dynamic binding (=lexical-binding: nil=), and
+  rendering depends on it: =cell-insert= and its siblings read =row=
+  and =col= from their caller.  Moving to lexical binding is a larger
+  change than any here and wants its own tests first.
+- The README's own list of issues (cursor display with images, column
+  alignment after font changes, no dependency resolution between cells)
+  is David's and still stands.
 
-1. *Sheet settings are never found.*  =cell-sheet-collect-settings=
-   binds =cl-values= but loops over the unrelated global =values=, so
-   =cell-sheet-setting-value= returns nil.
-2. *Comment cells are collected.*  The comment cell's
-   =cell-collect-value-p= method has a docstring and no body, so it
-   returns the docstring, which is non-nil.
-3. *=cell-sexp->cell= errors on a value that is not a string*, e.g.
-   =7=: the expression cell measures the raw value as a string
-   (=wrong-type-argument sequencep 7=).
+* Who to talk to
 
-Byte-compiling under Emacs 29 also shows warnings worth small,
-separate commits: =(require 'cl)= is deprecated; =setf= on
-=buffer-modified-p= and =point-at-bol= are obsolete; =image-size= is
-not declared.  The free =row= and =col= warnings in =cell-insert= and
-its siblings are expected, because the file uses dynamic binding.
-
-* Relation to dungeon-mode
-
-dungeon-mode's =dm-cell= (an editor for dungeon org tables) took its
-design from cell-mode: a grid of objects, mouse-first editing,
-undo/redo.  It shares no code with this repository.  Its plan
-(=MENTAT-CELL-UI-PLAN.org= in dungeon) to use cell-mode as a view
-backend is still open.
+Tended by INPUTLOOP: Corwin Brust and Bryant Frankford.  Bugs, ideas and
+patches: open an issue at https://github.com/inputloop/cell.el, or
+write to Corwin at corwin@bru.st.
 
 * Licence
 
-=cell-mode.el= is David O'Toole's, under the GNU GPL version 3 or (at
-your option) any later version; see =LICENSE=.  The recipe files we
-added (=Makefile=, =t/cell-mode-tests.el=, this file) are under the
-same terms: GPL-3.0-or-later.
+=cell-mode.el= is David O'Toole's, under the GNU General Public License,
+version 3 or (at your option) any later version; see =LICENSE=.  Our
+fixes to it are under the same terms.  The files we added (=Makefile=,
+=t/cell-mode-tests.el=, the CI workflow and this file) are also
+GPL-3.0-or-later, so the package has one licence throughout.
 
-Copyright (C) 2026 Corwin Brust <corwin@bru.st>
+Copyright (C) 2026 Corwin Brust, Bryant Frankford (INPUTLOOP)

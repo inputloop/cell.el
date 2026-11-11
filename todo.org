@@ -1,2 +1,6 @@
 ** TODO Fix eieio-persistent function name change bug
+   2026-11-11 (INPUTLOOP): not reproduced on Emacs 29.3; saving a sheet
+   and reading it back is covered in t/cell-mode-tests.el.
 ** TODO Fix paste/undo function using cell-sheet-read
+   2026-11-11 (INPUTLOOP): not reproduced on Emacs 29.3; undo and redo
+   of a paste are covered in t/cell-mode-tests.el.
