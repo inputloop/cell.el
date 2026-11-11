@@ -301,11 +301,9 @@
     (should (equal "p" (cell-mode-tests--value-at 2 0)))
     (should (equal "q" (cell-mode-tests--value-at 2 1)))))
 
-(ert-deftest cell-mode-tests-known-cut-one-cell ()
-  "Known defect: cutting with no selection loses the cell.
-With no selection, `cell-sheet-cut-to-clipboard' blanks the cell at
-the cursor without first copying it, so a paste brings back nothing."
-  :expected-result :failed
+(ert-deftest cell-mode-tests-cmd-cut-paste-one-cell ()
+  "Cutting with no selection moves the cell at the cursor.
+Was a defect: the cell was blanked without being copied first."
   (cell-mode-tests--with-sheet
     (cell-mode-tests--put 0 0 "moving")
     (let ((inhibit-message t)) (cell-sheet-cut-to-clipboard))

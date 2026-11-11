@@ -805,7 +805,8 @@ A VALUE that is not a string is labelled with its printed form."
   (cell-with-current-cell-sheet
    (cell-push-undo-history)
    (if (null (cell-sheet-selection cell-current-sheet))
-       (cell-grid-set grid cursor-row cursor-column nil)
+       (progn (cell-sheet-copy-to-clipboard)
+              (cell-grid-set grid cursor-row cursor-column nil))
      (progn
        (let ((sel (cell-sheet-selection cell-current-sheet)))
          (cell-sheet-copy-to-clipboard)
