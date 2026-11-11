@@ -1107,8 +1107,8 @@ The argument FACE specifies which face to use."
                                        (when the-cell default))))
        (when (and (stringp val)
                   (> (length val) 0))
-         (cell-grid-set grid cursor-row cursor-column (copy-tree instance :copy-vectors))
-         (cell-accept-string-value instance (copy-tree val :copy-vectors)))))
+         (cell-accept-string-value instance (copy-tree val :copy-vectors))
+         (cell-grid-set grid cursor-row cursor-column instance))))
    (cell-sheet-update)))
 
 (defun cell-sheet-create-comment ()
