@@ -378,11 +378,10 @@ the cursor without first copying it, so a paste brings back nothing."
 
 ;;; Known defects (pinned, not fixed here)
 
-(ert-deftest cell-mode-tests-known-setting-value ()
-  "Known defect: sheet settings are never found.
-`cell-sheet-collect-settings' binds `cl-values' but loops over the
-unrelated global `values', so `cell-sheet-setting-value' returns nil."
-  :expected-result :failed
+(ert-deftest cell-mode-tests-setting-value ()
+  "A setting cell holding [NAME VALUE] is found by name.
+Was a defect: `cell-sheet-collect-settings' bound `cl-values' but
+looped over the unrelated global `values'."
   (cell-mode-tests--with-sheet
     (cell-mode-tests--put 0 0 "[cell-mode-tests-setting 9]")
     (should (= 9 (cell-sheet-setting-value cell-current-sheet

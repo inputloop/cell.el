@@ -1625,9 +1625,9 @@ EVENT is the mouse event data."
 
 (cl-defmethod cell-sheet-collect-settings ((sheet cell-sheet))
   "Return a list of all the settings values in SHEET."
-  (let ((cl-values (mapcar #'cell-find-value (cell-collect-cells sheet)))
+  (let ((cell-values (mapcar #'cell-find-value (cell-collect-cells sheet)))
         (results ()))
-    (dolist (value values)
+    (dolist (value cell-values)
       (when (vectorp value)
         (push value results)))
     (nreverse results)))
