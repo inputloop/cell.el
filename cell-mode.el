@@ -148,7 +148,6 @@
 ;;; Code:
 
 (require 'cl-lib)
-(eval-when-compile (require 'cl))
 (require 'eieio)
 (require 'eieio-base)
 (require 'eieio-custom)
@@ -175,7 +174,7 @@
        (defun ,setter (,instance ,value)
          (setf (slot-value ,instance ',slot)
                ,value))
-       (defsetf ,getter ,setter))))
+       (gv-define-simple-setter ,getter ,setter))))
 
 (cl-defmacro cell-defclass (name superclasses &rest specs)
   "Define a class called NAME with superclasses SUPERCLASSES.
@@ -363,6 +362,8 @@ A VALUE that is not a string is labelled with its printed form."
 
 ;;; Image cells
 
+(declare-function image-size "image.c" (spec &optional pixels frame))
+
 (cell-defclass cell-image-cell (cell) image)
 (cell-defslot cell image)
 
@@ -543,7 +544,7 @@ A VALUE that is not a string is labelled with its printed form."
         (cell-sheet-update)
         (setf (cell-sheet-cursor cell-current-sheet) cursor)
         (cell-sheet-after-open-hook cell-current-sheet)
-        (setf (buffer-modified-p (current-buffer)) t)
+        (set-buffer-modified-p t)
         (message "Undo! %d change(s) remaining." (length cell-undo-history))))))
 
 (defun cell-sheet-undo ()
@@ -662,7 +663,7 @@ A VALUE that is not a string is labelled with its printed form."
       (cell-sheet-update)
       (cell-sheet-after-open-hook cell-current-sheet)
       (setq-local show-trailing-whitespace nil)
-      (setf (buffer-modified-p (current-buffer)) nil))))
+      (set-buffer-modified-p nil))))
 
 ;;; Initializing sheets
 
@@ -702,7 +703,7 @@ A VALUE that is not a string is labelled with its printed form."
         (setf buffer-read-only t)
         (cell-mode-insinuate)
         (cell-sheet-after-open-hook sheet^)
-        (setf (buffer-modified-p buffer) nil))
+        (with-current-buffer buffer (set-buffer-modified-p nil)))
       sheet^)))
 
 ;;; The mark and the selection
@@ -895,7 +896,7 @@ The argument FACE specifies which face to use."
                (cl-incf n)
                (backward-char 1)))))
        ;; (when (plusp n)
-       ;;        (goto-char (+ (point-at-bol) (aref stops column)))
+       ;;        (goto-char (+ (line-beginning-position) (aref stops column)))
        ;;        (forward-char (+ n 1))))
        (add-text-properties (point) (+ (point) cursor-width)
                             (list 'face face))))))
@@ -916,7 +917,7 @@ The argument FACE specifies which face to use."
            (cl-do ((r start-row (+ r 1)))
                ((> r (+ start-row dr)))
              (beginning-of-line)
-             (let* ((pos (+ (point-at-bol) (aref stops start-col)))
+             (let* ((pos (+ (line-beginning-position) (aref stops start-col)))
                     (end pos))
                (cl-do ((c start-col (+ c 1)))
                    ((> c (+ start-col dc)))
@@ -1090,7 +1091,7 @@ The argument FACE specifies which face to use."
 
 (cl-defmethod cell-sheet-after-open-hook ((sheet cell-sheet))
   "This method is invoked after the SHEET is opened."
-  (setf (buffer-modified-p (current-buffer)) nil))
+  (set-buffer-modified-p nil))
 
 (defun cell-sheet-create-cell ()
   "Create or edit a cell at the cursor."
@@ -1387,7 +1388,7 @@ use."
     (let ((str label)) 
       (insert str)
       ;; the variables ROW and COL are free in the next line.
-      (setf (gethash (list row col)
+      (setf (gethash (with-no-warnings (list row col)) ; bound by `cell-sheet-do-redraw'
                      cell-cached-buffer-positions)
             (point))
       (add-text-properties (point) (- (point) (length str))
@@ -1399,7 +1400,7 @@ use."
   (when (> width 0)
     (insert (propertize (make-string width ? ) 'face face))
     ;; the variables ROW and COL are free in the next line.
-    (setf (gethash (list row col)
+    (setf (gethash (with-no-warnings (list row col)) ; bound by `cell-sheet-do-redraw'
                    cell-cached-buffer-positions)
           (point))
     width))
@@ -1413,7 +1414,7 @@ use."
   (when face
     (put-text-property (point) (1+ (point)) 'face face))
   ;; adjust cached buffer position for cursor, when spacer is inserted
-  (cl-incf (gethash (list row col)
+  (cl-incf (gethash (with-no-warnings (list row col)) ; bound by `cell-sheet-do-redraw'
                  cell-cached-buffer-positions))
   ;;
   (forward-char))
@@ -1460,7 +1461,7 @@ The optional argument FACE is the face to use."
   (when (eq major-mode 'cell-mode)
     (let ((inhibit-read-only t))
       (cell-sheet-update)
-      (setf (buffer-modified-p (current-buffer)) nil))))
+      (set-buffer-modified-p nil))))
 
 (defun cell-sheet-update-serialization ()
   "Rewrite the buffer contents to reflect the current data."
@@ -1488,7 +1489,7 @@ The optional argument FACE is the face to use."
          (add-text-properties (point-min)
                               x
                               (list 'display "")))
-       (setf (buffer-modified-p (current-buffer)) nil)))))
+       (set-buffer-modified-p nil)))))
 
 (defun cell-sheet-update (&optional lazy)
   "Update the entire cell sheet.
@@ -1566,7 +1567,7 @@ EVENT is the mouse event data."
                  (when (cell-sheet-selection cell-current-sheet)
                    (cell-sheet-update-selection-from-mark))
                  (cell-sheet-update)))))))
-      (setf (buffer-modified-p buf) old-buffer-modified-p)
+      (with-current-buffer buf (set-buffer-modified-p old-buffer-modified-p))
       (cell-sheet-after-update-hook cell-current-sheet))))
 
 (defun cell-sheet-mouse-execute (event)
@@ -1599,7 +1600,7 @@ EVENT is the mouse event data."
                 (sel `(,@pt1 ,@pt2)))
            (setf (cell-sheet-selection cell-current-sheet) sel))
          (cell-sheet-update)))
-      (setf (buffer-modified-p buf) old-buffer-modified-p))))
+      (with-current-buffer buf (set-buffer-modified-p old-buffer-modified-p)))))
 
 ;;; Additional commands
 
