@@ -153,6 +153,7 @@
 (require 'eieio-base)
 (require 'eieio-custom)
 (require 'eieio-speedbar)
+(require 'tool-bar)
 
 ;;; EIEIO compatibility macros
 
