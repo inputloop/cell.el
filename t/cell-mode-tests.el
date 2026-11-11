@@ -194,6 +194,188 @@
       (cell-pop-undo-history))
     (should (equal "before" (cell-mode-tests--value-at 0 0)))))
 
+;;; Commands, as a user drives them
+
+(defun cell-mode-tests--goto (row col)
+  "Put the sheet's cursor at ROW, COL."
+  (setf (cell-sheet-cursor cell-current-sheet) (list row col)))
+
+(defmacro cell-mode-tests--answering (answer &rest body)
+  "Run BODY with every minibuffer prompt answered by ANSWER."
+  (declare (indent 1) (debug t))
+  `(cl-letf (((symbol-function 'read-from-minibuffer)
+              (lambda (&rest _) ,answer))
+             ((symbol-function 'read-file-name)
+              (lambda (&rest _) ,answer)))
+     (let ((inhibit-message t)) ,@body)))
+
+(ert-deftest cell-mode-tests-cmd-create-and-edit-cell ()
+  (cell-mode-tests--with-sheet
+    (cell-mode-tests--goto 2 3)
+    (cell-mode-tests--answering "(* 6 7)" (cell-sheet-create-cell))
+    (should (equal "(* 6 7)" (cell-mode-tests--value-at 2 3)))
+    (cell-mode-tests--answering "(* 2 2)" (cell-sheet-create-cell))
+    (should (equal "(* 2 2)" (cell-mode-tests--value-at 2 3)))
+    (should (= 4 (cell-sheet-execute)))))
+
+(ert-deftest cell-mode-tests-cmd-empty-answer-makes-no-cell ()
+  (cell-mode-tests--with-sheet
+    (cell-mode-tests--answering "" (cell-sheet-create-cell))
+    (should (null (cell-grid-get (cell-sheet-grid cell-current-sheet) 0 0)))))
+
+(ert-deftest cell-mode-tests-cmd-create-comment ()
+  (cell-mode-tests--with-sheet
+    (cell-mode-tests--goto 1 1)
+    (cell-mode-tests--answering "a remark" (cell-sheet-create-comment))
+    (should (cl-typep (cell-grid-get (cell-sheet-grid cell-current-sheet) 1 1)
+                      'cell-comment-cell))))
+
+(ert-deftest cell-mode-tests-cmd-delete-cell ()
+  (cell-mode-tests--with-sheet
+    (cell-mode-tests--put 0 0 "gone")
+    (cell-sheet-delete-cell)
+    (should (null (cell-mode-tests--value-at 0 0)))))
+
+(ert-deftest cell-mode-tests-cmd-insert-and-delete-row ()
+  (cell-mode-tests--with-sheet
+    (cell-mode-tests--put 1 0 "row1")
+    (cell-mode-tests--goto 0 0)
+    (cell-sheet-insert-row)
+    (should (equal "row1" (cell-mode-tests--value-at 2 0)))
+    (cell-sheet-delete-row)
+    (should (equal "row1" (cell-mode-tests--value-at 1 0)))))
+
+(ert-deftest cell-mode-tests-cmd-insert-and-delete-column ()
+  (cell-mode-tests--with-sheet
+    (cell-mode-tests--put 0 1 "col1")
+    (let ((cols (cell-grid-columns (cell-sheet-grid cell-current-sheet))))
+      (cell-mode-tests--goto 0 0)
+      (cell-sheet-insert-column)
+      (should (= (1+ cols) (cell-grid-columns (cell-sheet-grid cell-current-sheet))))
+      (should (equal "col1" (cell-mode-tests--value-at 0 2)))
+      (cell-sheet-delete-column)
+      (should (= cols (cell-grid-columns (cell-sheet-grid cell-current-sheet))))
+      (should (equal "col1" (cell-mode-tests--value-at 0 1))))))
+
+(ert-deftest cell-mode-tests-cmd-copy-paste-one-cell ()
+  (cell-mode-tests--with-sheet
+    (cell-mode-tests--put 0 0 "twin")
+    (let ((inhibit-message t)) (cell-sheet-copy-to-clipboard))
+    (cell-mode-tests--goto 4 4)
+    (cell-sheet-paste)
+    (should (equal "twin" (cell-mode-tests--value-at 4 4)))
+    (should (equal "twin" (cell-mode-tests--value-at 0 0)))
+    (should-not (eq (cell-grid-get (cell-sheet-grid cell-current-sheet) 0 0)
+                    (cell-grid-get (cell-sheet-grid cell-current-sheet) 4 4)))))
+
+(ert-deftest cell-mode-tests-cmd-copy-paste-selection ()
+  (cell-mode-tests--with-sheet
+    (cell-mode-tests--put 0 0 "a")
+    (cell-mode-tests--put 0 1 "b")
+    (cell-mode-tests--put 1 1 "d")
+    (cell-mode-tests--goto 0 0)
+    (cell-sheet-set-mark)
+    (cell-mode-tests--goto 1 1)
+    (cell-sheet-update-selection-from-mark)
+    (let ((inhibit-message t)) (cell-sheet-copy-to-clipboard))
+    (should (null (cell-sheet-selection cell-current-sheet)))
+    (cell-mode-tests--goto 5 5)
+    (cell-sheet-paste)
+    (should (equal "a" (cell-mode-tests--value-at 5 5)))
+    (should (equal "b" (cell-mode-tests--value-at 5 6)))
+    (should (null (cell-mode-tests--value-at 6 5)))
+    (should (equal "d" (cell-mode-tests--value-at 6 6)))))
+
+(ert-deftest cell-mode-tests-cmd-cut-paste-selection ()
+  (cell-mode-tests--with-sheet
+    (cell-mode-tests--put 0 0 "p")
+    (cell-mode-tests--put 0 1 "q")
+    (cell-sheet-set-mark)
+    (cell-mode-tests--goto 0 1)
+    (cell-sheet-update-selection-from-mark)
+    (let ((inhibit-message t)) (cell-sheet-cut-to-clipboard))
+    (should (null (cell-mode-tests--value-at 0 0)))
+    (should (null (cell-mode-tests--value-at 0 1)))
+    (cell-mode-tests--goto 2 0)
+    (cell-sheet-paste)
+    (should (equal "p" (cell-mode-tests--value-at 2 0)))
+    (should (equal "q" (cell-mode-tests--value-at 2 1)))))
+
+(ert-deftest cell-mode-tests-known-cut-one-cell ()
+  "Known defect: cutting with no selection loses the cell.
+With no selection, `cell-sheet-cut-to-clipboard' blanks the cell at
+the cursor without first copying it, so a paste brings back nothing."
+  :expected-result :failed
+  (cell-mode-tests--with-sheet
+    (cell-mode-tests--put 0 0 "moving")
+    (let ((inhibit-message t)) (cell-sheet-cut-to-clipboard))
+    (should (null (cell-mode-tests--value-at 0 0)))
+    (cell-mode-tests--goto 3 3)
+    (cell-sheet-paste)
+    (should (equal "moving" (cell-mode-tests--value-at 3 3)))))
+
+(ert-deftest cell-mode-tests-cmd-undo-then-redo-a-paste ()
+  (cell-mode-tests--with-sheet
+    (cell-mode-tests--put 0 0 "x")
+    (let ((inhibit-message t)) (cell-sheet-copy-to-clipboard))
+    (cell-mode-tests--goto 2 2)
+    (cell-sheet-paste)
+    (let ((inhibit-message t)) (cell-sheet-undo))
+    (should (null (cell-mode-tests--value-at 2 2)))
+    (should (equal "x" (cell-mode-tests--value-at 0 0)))
+    (let ((inhibit-message t)) (cell-sheet-redo))
+    (should (equal "x" (cell-mode-tests--value-at 2 2)))))
+
+(ert-deftest cell-mode-tests-cmd-undo-keeps-cursor ()
+  (cell-mode-tests--with-sheet
+    (cell-mode-tests--goto 3 1)
+    (cell-mode-tests--answering "kept" (cell-sheet-create-cell))
+    (let ((inhibit-message t)) (cell-sheet-undo))
+    (should (equal '(3 1) (cell-sheet-cursor cell-current-sheet)))
+    (should (null (cell-mode-tests--value-at 3 1)))))
+
+(ert-deftest cell-mode-tests-cmd-undo-with-empty-history-is-harmless ()
+  (cell-mode-tests--with-sheet
+    (cl-letf (((symbol-function 'beep) #'ignore))
+      (let ((inhibit-message t))
+        (cell-pop-undo-history)
+        (cell-sheet-redo)))
+    (should (cl-typep cell-current-sheet 'cell-sheet))))
+
+(ert-deftest cell-mode-tests-cmd-cursor-moves-and-stays-in-bounds ()
+  (cell-mode-tests--with-sheet
+    (cell-sheet-move-cursor-down)
+    (cell-sheet-move-cursor-right)
+    (should (equal '(1 1) (cell-sheet-cursor cell-current-sheet)))
+    (cell-sheet-move-cursor-up)
+    (cell-sheet-move-cursor-up)
+    (cell-sheet-move-cursor-left)
+    (cell-sheet-move-cursor-left)
+    (should (equal '(0 0) (cell-sheet-cursor cell-current-sheet)))))
+
+(ert-deftest cell-mode-tests-file-save-and-visit ()
+  "A sheet saved to a file opens again with its cells."
+  (let ((file (make-temp-file "cell-mode-test" nil ".cell")))
+    (unwind-protect
+        (progn
+          (let ((buf (find-file-noselect file)))
+            (with-current-buffer buf
+              (cell-mode)
+              (cell-mode-tests--put 1 1 "kept on disk")
+              (cell-sheet-update)
+              (let ((inhibit-message t)) (save-buffer))
+              (cell-stop-timer)
+              (kill-buffer buf)))
+          (let ((buf (find-file-noselect file)))
+            (unwind-protect
+                (with-current-buffer buf
+                  (let ((inhibit-message t)) (cell-mode))
+                  (should (equal "kept on disk" (cell-mode-tests--value-at 1 1))))
+              (cell-stop-timer)
+              (with-current-buffer buf (set-buffer-modified-p nil))
+              (kill-buffer buf))))
+      (delete-file file))))
+
 ;;; Known defects (pinned, not fixed here)
 
 (ert-deftest cell-mode-tests-known-setting-value ()
