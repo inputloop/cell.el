@@ -3,11 +3,12 @@
 ;; Copyright (C) 2006-2007, 2019-2021 by David O'Toole
 
 ;; Author: David O'Toole <deeteeoh1138@gmail.com>
-;; Maintainer: David O'Toole <deeteeoh1138@gmail.com>
+;; Maintainer: Corwin Brust <corwin@bru.st>
 ;; Package-Requires: ((emacs "25.1"))
-;; URL: https://gitlab.com/dto/cell-mode
-;; License: GPLv3
-;; Version: 2.3
+;; Keywords: tools, data
+;; URL: https://github.com/inputloop/cell.el
+;; SPDX-License-Identifier: GPL-3.0-or-later
+;; Version: 2.4
 
 ;; This program is free software; you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License
