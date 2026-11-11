@@ -352,7 +352,8 @@ By default this executes the cell."
 (cell-defclass cell-comment-cell (cell-expression))
 
 (cl-defmethod cell-collect-value-p ((c cell-comment-cell))
-  "Return non-nil if the value of cell C is to be collected.")
+  "Return nil: the comment cell C labels the sheet and holds no data."
+  nil)
 
 (cl-defmethod cell-set-value :after ((c cell-comment-cell) value)
   "Set the face of the comment cell C after setting VALUE."

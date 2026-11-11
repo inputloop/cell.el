@@ -387,11 +387,10 @@ looped over the unrelated global `values'."
     (should (= 9 (cell-sheet-setting-value cell-current-sheet
                                            'cell-mode-tests-setting)))))
 
-(ert-deftest cell-mode-tests-known-comment-cell-collected ()
-  "Known defect: comment cells are collected after all.
-The comment cell's `cell-collect-value-p' method has a docstring and no
-body, so the docstring is its return value: a non-nil string."
-  :expected-result :failed
+(ert-deftest cell-mode-tests-comment-cell-not-collected ()
+  "Comment cells are labels, so their values are not collected.
+Was a defect: the method had a docstring and no body, so it returned
+the docstring, a non-nil string."
   (let ((c (make-instance 'cell-comment-cell)))
     (cell-set-value c "a note")
     (should-not (cell-collect-value-p c))))
