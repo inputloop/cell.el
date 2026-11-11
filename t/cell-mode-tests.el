@@ -395,12 +395,10 @@ the docstring, a non-nil string."
     (cell-set-value c "a note")
     (should-not (cell-collect-value-p c))))
 
-(ert-deftest cell-mode-tests-known-sexp->cell-non-string ()
-  "Known defect: `cell-sexp->cell' errors on a value that is not a string.
-It builds a label with `prin1-to-string', then calls `cell-set-value'
-with the raw value, and the expression cell's :after method measures
-that value as a string: (wrong-type-argument sequencep 7)."
-  :expected-result :failed
+(ert-deftest cell-mode-tests-sexp->cell-non-string ()
+  "`cell-sexp->cell' keeps a non-string value and labels it in print.
+Was a defect: the expression cell's :after method measured the raw
+value as a string, (wrong-type-argument sequencep 7)."
   (let ((n (cell-sexp->cell 7)))
     (should (equal "7" (cell-label n)))
     (should (= 7 (cell-get-value n)))))

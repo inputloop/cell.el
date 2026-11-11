@@ -327,10 +327,12 @@ By default this executes the cell."
 (cell-defclass cell-expression (cell))
 
 (cl-defmethod cell-set-value :after ((c cell-expression) value)
-  "Update the formatting of the expression cell C with VALUE."
-  (setf (cell-label-width c)
-        (cell-string-width value))
-  (setf (cell-label c) value))
+  "Update the formatting of the expression cell C with VALUE.
+A VALUE that is not a string is labelled with its printed form."
+  (let ((label (if (stringp value) value (prin1-to-string value))))
+    (setf (cell-label-width c)
+          (cell-string-width label))
+    (setf (cell-label c) label)))
 
 (cl-defmethod cell-find-value ((exp cell-expression))
   "Read the expression string contained in the cell EXP."
