@@ -510,10 +510,17 @@ A VALUE that is not a string is labelled with its printed form."
           (stops (cell-sheet-column-stops cell-current-sheet)))
      ,@body))
 
+(declare-function eieio-persistent-convert-list-to-object "eieio-base" (inputlist))
+
 (defun cell-sheet-read (forms)
   "Read the persistent cell sheet from FORMS."
-  (let ((sheet (eieio-persistent-make-instance 'cell-sheet (cdr forms))))
-    (prog1 sheet)))
+  (if (fboundp 'eieio-persistent-make-instance)
+      ;; Emacs 28 and later.
+      (eieio-persistent-make-instance 'cell-sheet (cdr forms))
+    ;; Emacs 25 to 27 have only the older name, which takes the whole
+    ;; list, class first.  It no longer exists in 28 and later.
+    (eieio-persistent-convert-list-to-object
+     (cons 'cell-sheet (cdr forms)))))
 
 ;;; Undo/redo support
 

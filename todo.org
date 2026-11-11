@@ -1,6 +1,10 @@
 ** TODO Fix eieio-persistent function name change bug
-   2026-11-11 (INPUTLOOP): not reproduced on Emacs 29.3; saving a sheet
-   and reading it back is covered in t/cell-mode-tests.el.
+   2026-11-11 (INPUTLOOP): found by CI.  `eieio-persistent-make-instance'
+   exists only from Emacs 28; 25 to 27 have
+   `eieio-persistent-convert-list-to-object'.  cell-sheet-read now uses
+   whichever is defined.  Left open for David to close.
 ** TODO Fix paste/undo function using cell-sheet-read
-   2026-11-11 (INPUTLOOP): not reproduced on Emacs 29.3; undo and redo
-   of a paste are covered in t/cell-mode-tests.el.
+   2026-11-11 (INPUTLOOP): undo and redo read the sheet back through
+   cell-sheet-read, so on Emacs 25 to 27 they failed for the same
+   reason as the item above; the same fix should cover this.  Undo and
+   redo of a paste are tested.  Left open for David to close.
